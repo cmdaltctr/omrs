@@ -1,10 +1,13 @@
 """Mac side of the Exp 35 test pod session (task 9.2): copy, launch, watch, pull.
 
 Usage: TEST_SESSION_RUNBOOK.md. No --ssh-host: runpod_ssh35.py reads the address from RunPod.
-It never stops or deletes a pod; the last line is ``DELETE_POD_NOW <pod id>``, or ``KEEP_POD``
-when the pod was kept on a failure (--keep-pod-on-fail). No key is printed. Idle = stage
+It never deletes a pod; after a clean end it stops the pod through the RunPod API
+(watch_podstop35.py). The last line is ``DELETE_POD_NOW <pod id>``, or ``KEEP_POD`` when the
+pod was kept (--keep-pod-on-fail, a hold). No key is printed. Idle = stage
 timeout + 10 min. After idle, the cap or a signal it stops the chain (watch_stop35.py) before
 the pull. Each finished stage is pulled when it appears (watch_stages35.py).
+A signal only detaches (exit 15, KEEP_POD, the chain runs on; ``--attach`` rejoins).
+``touch <results folder>/STOP`` before the signal stops the chain instead (exit 12).
 Test hook: MAC_WATCH35_FAKE_CLOCK=1 makes every wait move a virtual clock (no sleep).
 """
 
@@ -15,15 +18,16 @@ import os
 import re
 import shlex
 import signal
-import subprocess
 import sys
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 
 import runpod_ssh35
+import watch_modes35
+import watch_offsite35
+import watch_podstop35
 import watch_stages35
 import watch_zai35
 from watch_inputs35 import (
@@ -37,6 +41,7 @@ from watch_inputs35 import (
     sha256,
     unsafe,
 )
+from watch_pod35 import Pod, say
 from watch_stop35 import stop_chain
 
 HERE = Path(__file__).resolve().parent
@@ -52,9 +57,9 @@ ZAI_ENV, STAGE_OUT, STOP_GRACE_MIN = f"{WORK}/.zai_env", f"{WORK}/stage-out", 12
 REMOTE_HERE = f"{REMOTE_REPO}/experiments/{EXP.name}/prefreeze"
 LAUNCH = f"WORK={WORK} bash {REMOTE_HERE}/launch35.sh > {LOG} 2>&1"
 
-POLL_S, SSH_POLL_S, STOP_POLL_S = 60, 15, 10
+POLL_S, SSH_POLL_S = 60, 15
 SSH_WAIT_S, IDLE_S, SSH_LOST_S, IDLE_GRACE_S = 15 * 60, 30 * 60, 10 * 60, 10 * 60
-SETTLE_S, STOP_WAIT_S, BEAT_S, LOG_COPY_S, PULL_COPY_S = 10 * 60, 5 * 60, 30 * 60, 10 * 60, 45 * 60
+SETTLE_S, BEAT_S, LOG_COPY_S, PULL_COPY_S = 10 * 60, 30 * 60, 10 * 60, 45 * 60
 
 DONE, STOP = "TEST_SESSION_DONE", "STOP:"
 STOP_FAILED, STOP_SENT = "POD_STOP_FAILED", "pod stop sent with:"
@@ -62,11 +67,9 @@ _STAGE_START = re.compile(r"== \S+: start \(timeout (\d+)s\)")  # idle = timeout
 _SHOWN = re.compile(r"^\[\d\d:\d\d:\d\d\] (==|test pod session|PULLED seen|no .*PULLED)")
 EXIT = {"done": 0, "internal": 1, "refused": 2, "stop-failed": 3, "no-ssh": 4, "setup": 5,
         "stop-line": 6, "session-ended": 7, "idle": 8, "wall-cap": 9, "ssh-lost": 10,
-        "pull": 11, "interrupted": 12, "no-address": 13, "kept": 14}  # fmt: skip
+        "pull": 11, "interrupted": 12, "no-address": 13, "kept": 14,
+        "detached": 15}  # fmt: skip
 _SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
-_SSH_OPTIONS = ("BatchMode=yes", "StrictHostKeyChecking=no", "UserKnownHostsFile=/dev/null",
-                "ConnectTimeout=20", "ServerAliveInterval=15", "LogLevel=ERROR")  # fmt: skip
-
 LAUNCH_CMD = (
     "command -v tmux >/dev/null || { echo 'tmux is not on the pod'; exit 1; }; "
     f"if tmux has-session -t {SESSION} 2>/dev/null; then "
@@ -88,7 +91,12 @@ KEEP_TEXT = (  # the last line when the chain kept the pod after a failure
     "fix the stage and push the fix, then run again with --resume and the new --commit "
     "(otherwise the same arguments); delete the pod yourself when done"
 )
+ATTACH_HOLD = (  # why the last line is KEEP_POD until --attach is on the chain
+    "--attach did not end normally: the pod may run the chain and hold stage tarballs "
+    "that the Mac lacks. Fix the cause and run --attach (or --resume) again"
+)
 _hold: list[str] = []  # why the last line is KEEP_POD and not DELETE_POD_NOW
+_stop: list[Path] = []  # the STOP file of the results folder: a deliberate stop
 
 
 class Interrupted(Exception):
@@ -118,18 +126,15 @@ def pause(seconds: float) -> None:
         time.sleep(seconds)
 
 
-def say(text: str) -> None:
-    print(f"[{datetime.now(UTC):%H:%M:%S}] {text}", flush=True)
-
-
 def setup_cmds(plan: Plan, shas: dict[str, str]) -> list[str]:
     """Step 5: check the inputs, place the repository, write session.env, start the chain."""
     pairs = " ".join(f"{sha} {shlex.quote(name)}" for name, sha in shas.items())
     values = [f"COMMIT={plan.commit}", f"STOP_GRACE_MIN={STOP_GRACE_MIN}"]
     values.append(f"STAGES_FILE={REMOTE_HERE}/{plan.stages}")
-    values += ["KEEP_POD_ON_FAIL=1"] * plan.keep + ["RESUME=1"] * plan.resume
+    values += watch_offsite35.session_values(plan) + watch_stages35.flag_values(plan)
     stale = [TARBALL, f"{TARBALL}.sha256", OWN_TARBALL, f"{OWN_TARBALL}.sha256", PULLED]
     return [
+        watch_stages35.release_hold_cmd(WORK, SESSION),  # first: a held chain must end before git
         f"cd {INPUTS} && printf '%s  %s\\n' {pairs} | sha256sum -c -",
         f"set -e; [ -d {REMOTE_REPO}/.git ] || git clone -q {shlex.quote(plan.repo_url)} "
         f"{REMOTE_REPO}; cd {REMOTE_REPO}; git fetch -q origin; "
@@ -145,44 +150,6 @@ def poll_cmd(offset: int) -> str:
     return f"{alive}; tail -c +{offset + 1} {LOG} 2>/dev/null; true"
 
 
-def _call(args: list[str], timeout: float) -> subprocess.CompletedProcess[bytes] | None:
-    try:
-        kw = {"capture_output": True, "stdin": subprocess.DEVNULL, "timeout": timeout}
-        return subprocess.run(args, check=False, **kw)  # noqa: S603 - fixed argument lists
-    except subprocess.TimeoutExpired:
-        return None
-
-
-def _good(result: subprocess.CompletedProcess[bytes] | None, what: str) -> bool:
-    if result is None or result.returncode != 0:
-        text = "" if result is None else (result.stdout + result.stderr).decode("utf-8", "replace")
-        status = "timed out" if result is None else f"exit {result.returncode}"
-        say(f"  {what} failed ({status}) {text.strip()[-400:]}".rstrip())
-    return result is not None and result.returncode == 0
-
-
-class Pod:
-    """SSH and scp to the pod as root; the key goes to ssh by path only."""
-
-    def __init__(self, host: str, port: int | str, key: Path) -> None:
-        options = [part for option in _SSH_OPTIONS for part in ("-o", option)]
-        self.host, self.port, self.login = host, port, f"root@{host}"
-        self.ssh_base = ["ssh", "-i", str(key), "-p", str(port), *options, self.login]
-        self.scp_base = ["scp", "-q", "-i", str(key), "-P", str(port), *options]
-
-    def remote(self, path: str) -> str:
-        return f"{self.login}:{path}"
-
-    def ssh(self, command: str, timeout: float = 120) -> subprocess.CompletedProcess[bytes] | None:
-        return _call([*self.ssh_base, command], timeout)
-
-    def ok(self, command: str, timeout: float = 300) -> bool:
-        return _good(self.ssh(command, timeout), "remote step")
-
-    def copy(self, sources: Sequence[str], dest: str, timeout: float = 3600) -> bool:
-        return _good(_call([*self.scp_base, *sources, dest], timeout), "scp")
-
-
 @dataclass
 class Watch:
     """What the watcher knows of the chain from its log."""
@@ -195,6 +162,7 @@ class Watch:
     stop_failed: bool = False
     stop_sent: bool = False
     kept: bool = False  # the chain left the pod running (POD_KEPT, --keep-pod-on-fail)
+    failed_stages: bool = False  # the chain's finish line names a failed stage
     last_growth: float = 0.0
     idle_s: int = IDLE_S
 
@@ -206,6 +174,7 @@ class Watch:
         self.stop_failed |= STOP_FAILED in line
         self.stop_sent |= STOP_SENT in line
         self.kept |= watch_stages35.KEPT in line
+        self.failed_stages |= "== finish: failed stages: " in line and "stages: none;" not in line
         if STOP in line and not self.stop_line:
             self.stop_line = line.strip()
         marks = (DONE, STOP, STOP_FAILED, STOP_SENT, watch_stages35.KEPT)
@@ -240,6 +209,13 @@ def setup(pod: Pod, plan: Plan, shas: dict[str, str]) -> str | None:
             say(f"no SSH after {SSH_WAIT_S // 60} min")
             return "no-ssh"
         pause(SSH_POLL_S)
+    if plan.attach:
+        if why := watch_modes35.attach_refusal(pod, SESSION, PULLED):
+            say(f"REFUSED: {why}")
+            return "refused"  # the attach hold stays: no delete line
+        _hold.remove(ATTACH_HOLD)  # the watcher is on the chain: a normal end applies
+        say("steps 4 and 5: --attach: the chain runs; no inputs copy, no session.env, no launch")
+        return None
     check = pod.ssh(watch_stages35.inputs_match_cmd(INPUTS, shas)) if plan.resume else None
     held = check is not None and check.returncode == 0
     if held:
@@ -251,6 +227,8 @@ def setup(pod: Pod, plan: Plan, shas: dict[str, str]) -> str | None:
     if not held and not (
         pod.ok(f"mkdir -p {INPUTS}") and (pod.copy(files, dest) or pod.copy(files, dest))
     ):
+        return "setup"
+    if plan.seed_from and not watch_modes35.seed(pod, plan, STAGE_OUT, say):
         return "setup"
     say(f"step 5: check the SHA-256 on the pod; {REMOTE_REPO} at {plan.commit}; launch")
     commands = setup_cmds(plan, shas)
@@ -291,9 +269,12 @@ def watch(
                 beat, quiet = at, int((at - w.last_growth) // 60)
                 say(f"still watching: log {w.offset} bytes, last new byte {quiet} min ago")
             pause(POLL_S)
-    except Interrupted as stop:
-        say(f"{stop} received: ending the session now")
-        return "interrupted"
+    except Interrupted as sig:
+        if watch_modes35.stop_requested(_stop):
+            say(f"{sig} received and STOP exists: ending the session now")
+            return "interrupted"
+        say(f"{sig} received: detaching, the chain runs on")
+        return "detached"
 
 
 def wait_for(pod: Pod, w: Watch, met: Callable[[], bool], limit: float, step: float) -> bool | None:
@@ -339,7 +320,7 @@ def pull(pod: Pod, folder: Path) -> str:
 def end_session(
     pod: Pod, w: Watch, reason: str, folder: Path, stages: watch_stages35.StagePull, keep: bool
 ) -> tuple[str, str, str]:
-    """Pull, write PULLED, then wait for the pod's own stop; return the three verdicts."""
+    """Pull and write PULLED; return the verdicts. ``pending``: run() finishes the pod stop."""
     stop_chain(pod, reason, session=SESSION, tarball=TARBALL, say=say, now=now, pause=pause)
     if reason == "stop-line" and w.alive and not w.done:
         say(f"STOP: line seen; waiting up to {SETTLE_S // 60} min for {DONE}")
@@ -348,26 +329,19 @@ def end_session(
     outputs = pull(pod, folder)
     marker = "written" if pod.ok(f"printf '%s\\n' {outputs} > {PULLED}") else "not-written"
     say(f"{PULLED}: {marker} ({outputs})")
-    if not (w.done or keep):
-        return outputs, marker, "not-expected"
-    seen: bool | None = True
-    ended = lambda: w.stop_sent or w.stop_failed or w.kept or not w.alive  # noqa: E731
-    if not ended():
-        say(f"waiting up to {STOP_WAIT_S // 60} min for the pod to stop itself")
-        seen = wait_for(pod, w, ended, STOP_WAIT_S, STOP_POLL_S)
-    if w.kept:
-        return outputs, marker, "kept"
-    if w.stop_failed or w.stop_sent:
-        return outputs, marker, "FAILED" if w.stop_failed else "sent"
-    return outputs, marker, "ssh-closed" if seen is None else "not-seen"
+    return outputs, marker, "pending" if (w.done or keep) else "not-expected"
 
 
 def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
     pod = Pod(args.ssh_host or "<publicIp>", args.ssh_port or "<port>", plan.key)
     say(f"DRY RUN: no ssh, scp or tmux call, no file written. Key {plan.key} is not read.")
-    verb = "reuse (--resume: old files move aside)" if plan.resume else "create"
+    verb = "reuse (--resume or --attach: old files move aside)" if plan.reuse else "create"
     say(f"step 1: {verb} {plan.folder}")
-    for line in watch_stages35.dry_lines(WORK, STAGE_OUT):
+    for line in [
+        *watch_stages35.dry_lines(WORK, STAGE_OUT),
+        *watch_modes35.dry_lines(plan.attach, plan.seed_from),
+        *watch_offsite35.dry_lines(plan),
+    ]:
         say(f"  {line}")
     say(f"step 2: build {plan.folder / 'inputs' / INPUTS_TGZ} from {plan.root} (no Legal, D1):")
     sizes = {r: (plan.root / r).stat().st_size for r in plan.rels if not unsafe(r, plan.root)}
@@ -385,7 +359,11 @@ def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
         f"6 every {POLL_S} s: ssh {shlex.quote(poll_cmd(0))}; ends: see the runbook",
         f"7 ssh {shlex.quote(WHICH_CMD)}; on 'out': ssh {shlex.quote(PACK_CMD)}",
         f"7 scp {LOG} and the tarball with its .sha256; check; ssh 'printf <verdict> > {PULLED}'",
+        f"7b clean end only: POST {runpod_ssh35.API}{args.pod_id}/action "
+        f"{watch_podstop35.STOP_BODY}, then GET until {watch_podstop35.STOPPED} (3 min max)",
     ]
+    if plan.attach:  # no inputs copy, no session.env, no launch
+        remote = [x for x in remote if not x.startswith(("4 ", "5 "))]
     for step in remote:
         say(f"step {step}")
     for problem in problems:
@@ -397,6 +375,8 @@ def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
 def run(args: argparse.Namespace) -> int:
     """Steps 1 to 8; return the exit code."""
     start = now()
+    if args.attach and not args.dry_run:
+        _hold.append(ATTACH_HOLD)  # every way out before the attach works keeps the pod
     problems, plan = prepare(args)
     if args.dry_run:
         return dry_run(args, plan, problems)
@@ -405,9 +385,10 @@ def run(args: argparse.Namespace) -> int:
         return EXIT["refused"]
     for sig in _SIGNALS:
         signal.signal(sig, _interrupt)
-    if plan.resume:
+    if plan.reuse:
         say(
-            f"steps 1 and 2: --resume: reuse {plan.folder} and its inputs; move the old files aside"
+            f"steps 1 and 2: --resume or --attach: reuse {plan.folder} and its inputs;"
+            " move the old files aside"
         )
         for name in watch_stages35.aside(plan.folder):
             say(f"  moved aside: {name}")
@@ -415,6 +396,8 @@ def run(args: argparse.Namespace) -> int:
         say(f"steps 1 and 2: create {plan.folder}; build the inputs tarball (no Legal, D1)")
         plan.folder.mkdir(parents=True)
     (plan.folder / "watcher.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
+    _stop[:] = [plan.folder / watch_modes35.STOP_FILE]
+    _stop[0].unlink(missing_ok=True)  # a STOP file of an earlier session does not count
     (plan.folder / POD_ID_FILE).write_text(f"{args.pod_id}\n", encoding="utf-8")
     shas = build_inputs(plan, say)
     if not (found := runpod_ssh35.find(args, now=now, pause=pause, say=say)):
@@ -426,8 +409,26 @@ def run(args: argparse.Namespace) -> int:
     w, stages = Watch(), watch_stages35.StagePull(pod, WORK, plan.folder / "stage-out", say)
     reason = watch(pod, w, args.wall_cap_h * 3600, start, stages)
     signal.pthread_sigmask(signal.SIG_BLOCK, _SIGNALS)  # no signal may cut the pull short
+    if reason == "detached":  # a signal without STOP: leave the chain running
+        return watch_modes35.detach(args, plan, stages, say, _hold, EXIT["detached"])
     outputs, marker, stop = end_session(pod, w, reason, plan.folder, stages, plan.keep)
     say(stages.summary())
+    if outputs != "ok":  # the final outputs may exist only on the pod
+        _hold.append(
+            f"the final outputs were not pulled ({outputs}): the pod may hold the only copy"
+        )
+    if hold := watch_offsite35.report(plan, plan.folder, say):
+        _hold.append(hold)  # an object is not in R2: the pod may hold the only copy
+    if lost := stages.unresolved():  # a stage tarball that only the pod holds (stores included)
+        _hold.append(f"{', '.join(lost)} exist only on the pod, in {STAGE_OUT}, and were not "
+                     "pulled. Do not delete the pod yet: copy them with scp, or run again with "
+                     "--resume (same arguments) to retry the pull")  # fmt: skip
+    if stop == "pending":  # every hold is known now: the Mac stops the pod after a clean end
+        wait = lambda met, limit, step: wait_for(pod, w, met, limit, step)  # noqa: E731
+        clean = reason == "done" and outputs == "ok" and not _hold
+        stop = watch_podstop35.finish(
+            args.pod_id, w, wait, clean=clean, keep=plan.keep, say=say, now=now, pause=pause
+        )
     if w.stop_failed:
         code = EXIT["stop-failed"]
         say("!!! POD_STOP_FAILED: the pod did not stop itself and the GPU still bills.")
@@ -437,12 +438,9 @@ def run(args: argparse.Namespace) -> int:
         _hold.append(KEEP_TEXT)
     else:
         code = EXIT[reason] if reason != "done" else EXIT["done" if outputs == "ok" else "pull"]
-    if lost := stages.unresolved():  # a stage tarball that only the pod holds (stores included)
+    if lost:
         code = EXIT["pull"] if code == EXIT["done"] else code
         say(f"!!! STAGE_NOT_PULLED: {', '.join(lost)}")
-        _hold.append(f"{', '.join(lost)} exist only on the pod, in {STAGE_OUT}, and were not "
-                     "pulled. Do not delete the pod yet: copy them with scp, or run again with "
-                     "--resume (same arguments) to retry the pull")  # fmt: skip
     result = f"RESULT end={reason} outputs={outputs} pulled-marker={marker} pod-stop={stop}"
     result += f" exit={code} folder={plan.folder}"
     (plan.folder / "watch-summary.txt").write_text(result + "\n", encoding="utf-8")
@@ -468,8 +466,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--resume", action="store_true", help="re-launch; skip stages done in stage-out"
     )
+    watch_modes35.add_arguments(parser)
+    parser.add_argument("--resume-from-commit", default="", help="with --resume: trust this commit")
     parser.add_argument("--dry-run", action="store_true", help="print every step, run nothing")
     _hold.clear()
+    _stop.clear()
     try:
         code = run(parser.parse_args(argv))
     except SystemExit as error:
@@ -477,8 +478,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise
         code = EXIT["refused"]
     except (Interrupted, KeyboardInterrupt) as error:
-        say(f"stopped by {error or 'SIGINT'} before the end steps finished")
-        code = EXIT["interrupted"]
+        code = EXIT[watch_modes35.early_signal(error, _stop, _hold, say)]
     except Exception as error:  # noqa: BLE001 - the delete line must still come last
         say(f"INTERNAL ERROR: {type(error).__name__}: {error}")
         code = EXIT["internal"]

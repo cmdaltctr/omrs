@@ -23,6 +23,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import runpod_ssh35
+import watch_modes35
+import watch_offsite35
 import watch_zai35
 
 HERE = Path(__file__).resolve().parent
@@ -87,22 +89,47 @@ class Plan:
     extra: Path | None = None  # --extra-input: one more file for the pod's inputs folder
     keep: bool = False  # --keep-pod-on-fail
     resume: bool = False  # --resume: reuse the folder and the stage tarballs of an earlier try
+    resume_from: str = ""  # --resume-from-commit: the old commit whose finished stages stay valid
+    attach: bool = False  # --attach: join the chain that still runs; reuse the folder
+    seed_from: str = (
+        ""  # --seed-from: an earlier results folder whose stage tarballs seed a new pod
+    )
     repo_url: str = ""
     root: Path = Path()
     folder: Path = Path()
     rels: list[str] = field(default_factory=list)
+
+    @property
+    def reuse(self) -> bool:
+        """Whether the session reuses the results folder of an earlier try."""
+        return self.resume or self.attach
 
     def sent(self) -> list[str]:
         """Name the inputs that go to the pod and have their SHA-256 checked there."""
         return [INPUTS_TGZ, EXAMPLES, *([self.extra.name] if self.extra else [])]
 
 
-def resume_folder(root: Path, exp: str, stem: str) -> Path | None:
-    """Return the newest results folder ``<stem>-<date>`` of an earlier session, or ``None``."""
+def resume_folder(root: Path, exp: str, stem: str, pod_id: str = "") -> Path | None:
+    """Return the results folder of an earlier session of pod *pod_id*, or ``None``.
+
+    The folders are ``<stem>-<date>`` and ``<stem>-<date>-seed<n>`` (a seeded session). The
+    newest folder that recorded this pod id wins. When none did, the newest folder is
+    returned, so the caller names the mismatch.
+    """
     found = (root / "experiments" / exp).glob(f"{stem}-*")
-    return max(
-        (p for p in found if re.fullmatch(rf"{stem}-\d{{4}}-\d\d-\d\d", p.name)), default=None
-    )
+    name = re.compile(rf"{re.escape(stem)}-(\d{{4}}-\d\d-\d\d)(?:-seed(\d+))?")
+    keys = {p: m.groups() for p in found if (m := name.fullmatch(p.name))}
+    newest = sorted(keys, key=lambda p: (keys[p][0], int(keys[p][1] or 0)), reverse=True)
+    return next((p for p in newest if not pod_mismatch(p, pod_id)), newest[0] if newest else None)
+
+
+def seed_folder(folder: Path) -> Path:
+    """Return *folder*, or ``<name>-seed<n>`` (the next free n) when it exists: a same-day seed."""
+    n, found = 0, folder
+    while found.exists():
+        n += 1
+        found = folder.with_name(f"{folder.name}-seed{n}")
+    return found
 
 
 def pod_mismatch(folder: Path, pod_id: str) -> str:
@@ -120,8 +147,20 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
     """Check every local input; return the problems and the plan. Writes nothing."""
     plan = Plan(args.commit, args.ssh_key.expanduser(), args.examples.expanduser(), args.stages)
     plan.extra = args.extra_input.expanduser() if args.extra_input else None
-    plan.keep, plan.resume = args.keep_pod_on_fail, args.resume
-    problems = []
+    plan.keep, plan.resume, plan.resume_from = (
+        args.keep_pod_on_fail,
+        args.resume,
+        args.resume_from_commit,
+    )
+    plan.attach, plan.seed_from = args.attach, args.seed_from
+    plan.offsite, plan.pod_id = not args.no_offsite, args.pod_id
+    problems = watch_modes35.problems(plan.attach, plan.resume, plan.seed_from)
+    if plan.resume_from and not (plan.resume or plan.seed_from):
+        problems.append("--resume-from-commit needs --resume (or --seed-from)")
+    if plan.resume_from and not re.fullmatch(r"[0-9a-f]{40}", plan.resume_from):
+        problems.append(
+            "--resume-from-commit must be the full 40-character commit SHA (lower-case)"
+        )
     if not (args.stages.endswith("_stages.txt") and (HERE / Path(args.stages).name).is_file()):
         problems.append(f"--stages {args.stages} is not a *_stages.txt file in {HERE}")
     if plan.extra and not plan.extra.is_file():
@@ -146,31 +185,35 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
         plan.root, plan.rels = inputs()
         stem = plan.stages.removesuffix("_stages.txt").replace("_", "-")
         plan.folder = plan.root / "experiments" / EXP.name / f"{stem}-{datetime.now(UTC):%Y-%m-%d}"
-        if plan.resume:
-            plan.folder = resume_folder(plan.root, EXP.name, stem) or plan.folder
+        if plan.reuse:
+            plan.folder = resume_folder(plan.root, EXP.name, stem, args.pod_id) or plan.folder
+        elif plan.seed_from:  # the source folder may be today's: never reuse it
+            plan.folder = seed_folder(plan.folder)
     except Exception as error:  # noqa: BLE001 - any failure here is a refusal with its reason
         return [*problems, f"cannot list the inputs: {type(error).__name__}: {error}"], plan
     missing = [n for n in plan.sent() if not (plan.folder / "inputs" / n).is_file()]
-    if plan.resume and missing:
+    flag = "--attach" if plan.attach else "--resume"
+    if plan.reuse and missing:
         problems.append(
-            f"--resume: no earlier {stem} folder with the inputs {missing} ({plan.folder})"
+            f"{flag}: no earlier {stem} folder with the inputs {missing} ({plan.folder})"
         )
-    elif plan.resume and (why := pod_mismatch(plan.folder, args.pod_id)):
-        problems.append(f"--resume: {why}")
-    elif plan.folder.exists() and not plan.resume:
+    elif plan.reuse and (why := pod_mismatch(plan.folder, args.pod_id)):
+        problems.append(f"{flag}: {why}")
+    elif plan.folder.exists() and not plan.reuse:
         problems.append(f"results folder {plan.folder} already exists; it is never overwritten")
     problems += [f"input {rel} {why}" for rel in plan.rels if (why := unsafe(rel, plan.root))]
     problems += watch_zai35.problems()
+    problems += watch_offsite35.problems(plan.offsite)
     return problems, plan
 
 
 def build_inputs(plan: Plan, say: Callable[[str], None]) -> dict[str, str]:
     """Write the inputs folder (tarball, .sha256, examples, extra); return SHA-256 by name.
 
-    A resumed session writes nothing: it returns the hashes of the earlier inputs folder.
+    A resumed or attached session writes nothing: it returns the hashes of the earlier inputs.
     """
     folder = plan.folder / "inputs"
-    if plan.resume:
+    if plan.reuse:
         return {name: sha256(folder / name) for name in plan.sent()}
     folder.mkdir()
     tgz = folder / INPUTS_TGZ

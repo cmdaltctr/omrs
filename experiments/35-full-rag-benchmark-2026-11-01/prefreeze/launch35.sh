@@ -4,7 +4,8 @@
 # RunPod gives the create-time environment of the pod (the two secrets and the image
 # pin) to process 1 only. A shell that comes in over SSH does not have it. This script
 # copies the named values from /proc/1/environ into its own environment without
-# printing them, then starts pod_test_session.sh. The chain's pre-check names any value
+# printing them, then starts pod_test_session.sh. The three R2 values (off-site copy, see
+# offsite35.sh) are copied the same way and are optional unless OFFSITE_REQUIRED=1. The chain's pre-check names any value
 # that is still empty and stops before the first stage. It never prints a value.
 #
 # The Mac runs it inside tmux, from the repository checked out at COMMIT:
@@ -13,7 +14,7 @@
 # All work stays on the container disk, in WORK (default /root/exp35-work). /workspace is
 # network storage on many hosts, so it holds only a spare copy of the stage tarballs.
 # Optional: SESSION_ENV (default $WORK/session.env: names and plain values, never
-# a key; for example COMMIT, STOP_GRACE_MIN, RESUME and KEEP_POD_ON_FAIL), ZAI_ENV
+# a key; for example COMMIT, STOP_GRACE_MIN, KEEP_HOLD_MIN, RESUME and KEEP_POD_ON_FAIL), ZAI_ENV
 # (default $WORK/.zai_env: the mode-600 file with OMRS_EXP35_ZAI_BASE_URL that the Mac
 # watcher writes over ssh standard input), PROC1_ENVIRON (default /proc/1/environ).
 # Defaults when unset: WORK=/root/exp35-work, OUT_DIR=$WORK/exp35-test/out,
@@ -27,7 +28,8 @@ WORK="${WORK:-/root/exp35-work}"
 SESSION_ENV="${SESSION_ENV:-$WORK/session.env}"
 ZAI_ENV="${ZAI_ENV:-$WORK/.zai_env}"
 PROC1_ENVIRON="${PROC1_ENVIRON:-/proc/1/environ}"
-NAMES=(OPENROUTER_API_KEY OMRS_EXP35_ZAI_KEY EXP35_POD_IMAGE RUNPOD_POD_ID RUNPOD_API_KEY)
+NAMES=(OPENROUTER_API_KEY OMRS_EXP35_ZAI_KEY EXP35_POD_IMAGE RUNPOD_POD_ID RUNPOD_API_KEY
+  R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ENDPOINT)
 
 if [ -f "$SESSION_ENV" ]; then
   set -a

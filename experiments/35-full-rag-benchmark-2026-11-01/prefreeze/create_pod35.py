@@ -47,7 +47,14 @@ VOLUME_PATH = "/workspace"
 PORTS = ["22/tcp"]
 IMAGE_VARIABLE = "EXP35_POD_IMAGE"
 #: Environment variable -> RunPod secret name (account secrets, set 2026-11-10).
-SECRETS = {"OPENROUTER_API_KEY": "openrouter", "OMRS_EXP35_ZAI_KEY": "z-ai-glm"}
+SECRETS = {
+    "OPENROUTER_API_KEY": "openrouter",
+    "OMRS_EXP35_ZAI_KEY": "z-ai-glm",
+    # Off-site copy of the results in a private Cloudflare R2 bucket (offsite35.sh).
+    "R2_ACCESS_KEY_ID": "r2-exp35-key-id",
+    "R2_SECRET_ACCESS_KEY": "r2-exp35-secret",
+    "R2_ENDPOINT": "r2-exp35-endpoint",
+}
 _DIGEST = re.compile(r"^[^@\s]+@sha256:[0-9a-f]{64}$")
 
 

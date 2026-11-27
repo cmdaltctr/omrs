@@ -533,7 +533,28 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # (26), _watch_resume35 (6) and _freeze_layout_stages (5); prefreeze/test_session_stages
 # (12: the layout file's 6 BOTH checks and 6 no-/workspace cases), _pod_setup35 (7),
 # _launch35_script (6), _create_pod35 (3) and _mac_watch35_stop (1). None removed. No extra.
-_BASE_EXECUTED = 14237
+# +86 (2026-11-27, Exp 35 resume commit check, Mac-away survival and R2 off-site copy, by
+# test-ID diff against HEAD f2cc9b7f): 86 added: new files prefreeze/test_offsite35 (19),
+# _resume_commit35 (18), _watch_offsite35 (13), _watch_modes35 (12) and _pod_survival35
+# (11); prefreeze/test_watch_resume35 (9), _create_pod35 (3), _launch35_script (1).
+# None removed or renamed. No extra.
+# +22 (2026-11-27, PR 234 review, by test-ID diff against HEAD 14329e4d): 24 added (22 new
+# in prefreeze/test_offsite35 (8), _watch_modes35 (7), _watch_offsite35 (5) and
+# _resume_commit35 (2); 2 renamed in _mac_watch35, delete -> keep pod), 2 old IDs gone.
+# +7 (2026-11-27, PR 234 review: stop only on an ok verdict, by test-ID diff against HEAD
+# d97e5d01): 7 added in prefreeze/test_pod_survival35. None removed. No extra.
+# +12 (2026-11-27, a signal only detaches the watcher, by test-ID diff against HEAD
+# b7d1ff74): 12 added in the new file prefreeze/test_watch_detach35. None removed. No extra.
+# +1 (2026-11-27, PR 234 review: an early STOP signal keeps the pod, by test-ID diff against
+# HEAD aacf1ae3): 1 added in prefreeze/test_watch_detach35. None removed. No extra.
+# +4 (2026-11-27, pod self-stop retries and logs each failure, by test-ID diff against HEAD
+# 1482af8a): 4 added in the new file prefreeze/test_pod_stop35. None removed. No extra.
+# +22 (2026-11-27, the Mac stops the pod through the API, by test-ID diff against HEAD
+# 39c57adf): 22 added in the new file prefreeze/test_watch_podstop35. None removed. No extra.
+# +21 (2026-11-27, a kept pod holds then stops; PR 234 review, by test-ID diff against HEAD
+# 29102d52): 20 added in the new file prefreeze/test_pod_keephold35 and 1 in
+# prefreeze/test_watch_podstop35. None removed. No extra.
+_BASE_EXECUTED = 14412
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

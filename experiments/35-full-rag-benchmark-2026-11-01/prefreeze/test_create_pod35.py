@@ -34,7 +34,18 @@ def test_dry_run_prints_the_pinned_image_as_the_image_and_the_variable(
     assert out.count(PIN) == 2
     assert request["env"]["OPENROUTER_API_KEY"] == "{{ RUNPOD_SECRET_openrouter }}"
     assert request["env"]["OMRS_EXP35_ZAI_KEY"] == "{{ RUNPOD_SECRET_z-ai-glm }}"
-    assert set(request["env"]) == {"OPENROUTER_API_KEY", "OMRS_EXP35_ZAI_KEY", "EXP35_POD_IMAGE"}
+    assert request["env"]["R2_ACCESS_KEY_ID"] == "{{ RUNPOD_SECRET_r2-exp35-key-id }}"
+    secret = request["env"]["R2_SECRET_ACCESS_KEY"]
+    assert secret == "{{ RUNPOD_SECRET_r2-exp35-secret }}"  # noqa: S105 - a reference, no value
+    assert request["env"]["R2_ENDPOINT"] == "{{ RUNPOD_SECRET_r2-exp35-endpoint }}"
+    assert set(request["env"]) == {
+        "OPENROUTER_API_KEY",
+        "OMRS_EXP35_ZAI_KEY",
+        "EXP35_POD_IMAGE",
+        "R2_ACCESS_KEY_ID",
+        "R2_SECRET_ACCESS_KEY",
+        "R2_ENDPOINT",
+    }
 
 
 def test_the_request_asks_for_one_rtx_4090_only_on_secure_cloud_with_a_volume(
@@ -125,3 +136,13 @@ def test_the_container_disk_holds_the_work_and_the_volume_is_the_spare_copy(
     assert request["mounts"]["persistent"] == {"size": create_pod35.VOLUME_GB, "path": "/workspace"}
     assert create_pod35.VOLUME_GB == 40
     assert request["mounts"]["persistent"]["size"] < request["disk"]
+
+
+@pytest.mark.parametrize("name", ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_ENDPOINT"])
+def test_a_literal_r2_value_in_a_saved_request_is_refused_without_showing_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], name: str
+) -> None:
+    saved = tmp_path / "request.json"
+    saved.write_text(json.dumps(_changed(("env", name), LITERAL_KEY)), "utf-8")
+    code, _, err = _dry_run(capsys, "--check", str(saved))
+    assert code == 2 and name in err and LITERAL_KEY not in err

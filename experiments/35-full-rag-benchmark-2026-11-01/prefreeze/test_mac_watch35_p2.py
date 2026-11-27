@@ -46,7 +46,7 @@ def _run(s: Session, replies: list[dict[str, object]], *args: str, **env: str):
     answers.write_text(json.dumps(replies), encoding="utf-8")
     cmd = [sys.executable, str(driver), str(HERE), str(answers), str(s.tmp / "keys.log")]
     cmd += ["--pod-id", POD, "--commit", s.commit, "--examples", str(s.examples)]
-    cmd += ["--ssh-key", str(s.key), "--repo-url", str(s.url), *args]
+    cmd += ["--ssh-key", str(s.key), "--repo-url", str(s.url), *s.base_args, *args]
     return subprocess.run(
         cmd, env=s._env(**env), capture_output=True, text=True, timeout=120, cwd=s.tmp
     )

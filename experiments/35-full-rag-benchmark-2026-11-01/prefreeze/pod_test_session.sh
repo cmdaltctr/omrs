@@ -24,8 +24,12 @@
 # stage tarballs, so the copy to the Mac is small; P2, 2026-11-24), waits up
 # to STOP_GRACE_MIN minutes for
 # the Mac's $WORK/PULLED marker, then stops this pod, so billing for the GPU ends.
+# The Mac writes a verdict into $PULLED: only "ok" lets the pod stop; any other verdict
+# keeps the pod and logs POD_KEPT. No PULLED after the grace time: the pod stops (the spare
+# and the off-site copy hold the outputs).
 # KEEP_POD_ON_FAIL=1 keeps the pod instead after a failed stage or a signal, and logs
-# POD_KEPT. RESUME=1 (a relaunch on the same pod) skips each stage whose tarball matches
+# POD_KEPT. After either POD_KEPT the chain holds up to KEEP_HOLD_MIN minutes for the Mac,
+# then stops the pod (keep_hold35.sh). RESUME=1 (a relaunch on the same pod) skips each stage whose tarball matches
 # its hash, restoring it from SPARE_DIR when only the spare has it. A fresh launch
 # (RESUME unset) refuses when $WORK/stage-out already holds a tarball (G10).
 #
@@ -50,7 +54,13 @@
 # WORK is required, with no default: the chain refuses when it is unset, and never falls
 # back to /workspace. Optional: SPARE_DIR (default empty: no spare copy), RESUME=1,
 # KEEP_POD_ON_FAIL=1, SESSION_CAP (default 15h), STOP_GRACE_MIN
-# (default 0), PULL_POLL_S (default 10), DRY_RUN=1 (print every command, run none).
+# (default 0), KEEP_HOLD_MIN (default 120; 0 = hold nothing), PULL_POLL_S (default 10), DRY_RUN=1 (print every command, run none).
+# Each stage tarball has a <tag>.tgz.commit file: the full SHA of the commit this chain runs
+# from (git -C <Experiment 35 folder> rev-parse HEAD, read once at the start). A resume skips
+# a stage only when that commit is the current one. RESUME_FROM_COMMIT (a full 40-character SHA,
+# optional) lets the owner skip the stages that an older commit made, because the fix did not
+# touch them; each such skip is one JSON line in $OUT_DIR/resume-record.jsonl. A stage that
+# was made at another commit, or has no .commit file, runs again.
 # Exit codes: 0 every stage ok or skipped; 1 a stage failed, timed out or did not
 # start in time; 2 refused before the first stage; 3 the pod stop failed.
 set -uo pipefail
@@ -65,12 +75,17 @@ STAGE_OUT="$WORK/stage-out"
 STAGE_MARK="$WORK/.stage-start"
 BG_FILES="$WORK/background.files"
 TARBALL="$WORK/test-session-out.tgz"
+SESSION_LOG="${SESSION_LOG:-$WORK/test-session.log}"
 PULLED="$WORK/PULLED"
+HOLDING="$WORK/HOLDING"
+HOLD_RELEASED="$WORK/HOLD_RELEASED"
 BACKGROUND_PIDS="$WORK/background.pids"
 DRY_RUN="${DRY_RUN:-0}"
 SESSION_CAP="${SESSION_CAP:-15h}"
 STOP_GRACE_MIN="${STOP_GRACE_MIN:-0}"
+KEEP_HOLD_MIN="${KEEP_HOLD_MIN:-120}"
 PULL_POLL_S="${PULL_POLL_S:-10}"
+STOP_RETRY_S="${STOP_RETRY_S:-30}"
 REST_V2="https://api.runpod.io/v2"
 REST_V1="https://rest.runpod.io/v1"
 FAILED=()
@@ -87,9 +102,16 @@ FATAL=0
 LIMIT=0
 CMD=""
 STAGE_PGID=""
+RUN_COMMIT=""
+TAR_COMMIT=""
+VERDICT=""
 
 # shellcheck source=stage_pack35.sh
 . "$HERE/stage_pack35.sh"
+# shellcheck source=keep_hold35.sh
+. "$HERE/keep_hold35.sh"
+# shellcheck source=offsite35.sh
+. "$HERE/offsite35.sh"
 
 log() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 run() { if [ "$DRY_RUN" = 1 ]; then log "  [dry-run] $*"; else "$@"; fi; }
@@ -160,6 +182,7 @@ precheck() {
   cap="$(seconds "$SESSION_CAP")" || refuse "SESSION_CAP $SESSION_CAP is not a time (for example 15h)"
   DEADLINE=$(($(date +%s) + cap))
   case "$STOP_GRACE_MIN" in '' | *[!0-9]*) refuse "STOP_GRACE_MIN is not a whole number" ;; esac
+  case "$KEEP_HOLD_MIN" in '' | *[!0-9]*) refuse "KEEP_HOLD_MIN is not a whole number" ;; esac
   case "$PULL_POLL_S" in '' | 0 | *[!0-9]*) refuse "PULL_POLL_S is not a number above 0" ;; esac
   check_stages
   if [ "$DRY_RUN" = 1 ]; then
@@ -331,24 +354,42 @@ rest_stop() {
   printf 'Authorization: Bearer %s\n' "$RUNPOD_API_KEY" | curl "${args[@]}"
 }
 
-# stop_pod: the new runpodctl syntax, then the old one, then the REST API (G8).
+# stop_try <label> <command...>: run one stop method. A failure goes to the log with its exit
+# code and the first stderr line (max 200 chars, the API key removed), because the pane is lost.
+stop_try() {
+  local label="$1" err rc=0
+  shift
+  err="$("$@" 2>&1 >/dev/null)" || rc=$?
+  [ "$rc" -ne 0 ] || return 0
+  [ -z "${RUNPOD_API_KEY:-}" ] || err="${err//"$RUNPOD_API_KEY"/[redacted]}"
+  err="${err%%$'\n'*}"
+  log "pod stop: $label exit $rc: ${err:0:200}"
+  return "$rc"
+}
+
+# stop_pod: the new runpodctl syntax, then the old one, then the REST API (G8). Up to 3 rounds
+# of the whole chain, STOP_RETRY_S apart.
 stop_pod() {
-  local id="${RUNPOD_POD_ID:-<RUNPOD_POD_ID>}" how=""
+  local id="${RUNPOD_POD_ID:-<RUNPOD_POD_ID>}" how="" round
   if [ "$DRY_RUN" = 1 ]; then
     log "  [dry-run] runpodctl pod stop $id; else runpodctl stop pod $id; else POST" \
       "$REST_V2/pods/$id/action, then $REST_V1/pods/$id/stop (key from RUNPOD_API_KEY)"
     STOP_OK=1
     return 0
   fi
-  if runpodctl pod stop "$id"; then
-    how="runpodctl pod stop"
-  elif runpodctl stop pod "$id"; then
-    how="runpodctl stop pod"
-  elif rest_stop "$REST_V2/pods/$id/action" '{"action":"stop"}'; then
-    how="REST $REST_V2"
-  elif rest_stop "$REST_V1/pods/$id/stop"; then
-    how="REST $REST_V1"
-  fi
+  for round in 1 2 3; do
+    if stop_try "runpodctl pod stop" runpodctl pod stop "$id"; then
+      how="runpodctl pod stop"
+    elif stop_try "runpodctl stop pod" runpodctl stop pod "$id"; then
+      how="runpodctl stop pod"
+    elif stop_try "REST $REST_V2" rest_stop "$REST_V2/pods/$id/action" '{"action":"stop"}'; then
+      how="REST $REST_V2"
+    elif stop_try "REST $REST_V1" rest_stop "$REST_V1/pods/$id/stop"; then
+      how="REST $REST_V1"
+    fi
+    [ -z "$how" ] || break
+    [ "$round" -eq 3 ] || sleep "$STOP_RETRY_S"
+  done
   if [ -n "$how" ]; then
     STOP_OK=1
     log "pod stop sent with: $how"
@@ -358,8 +399,26 @@ stop_pod() {
   fi
 }
 
+# spare_final: copy the outputs tarball, a snapshot of the chain log, then the .sha256 to
+# SPARE_DIR, before the wait for the Mac: a pod stop clears the container disk. A failure is
+# logged only.
+spare_final() {
+  [ -n "$SPARE_DIR" ] || return 0
+  if [ "$DRY_RUN" = 1 ]; then
+    log "  [dry-run] copy $TARBALL, $SESSION_LOG (as test-session.log) and $TARBALL.sha256 to $SPARE_DIR"
+    return 0
+  fi
+  if mkdir -p "$SPARE_DIR" && cp "$TARBALL" "$SPARE_DIR/" \
+    && { [ ! -f "$SESSION_LOG" ] || cp "$SESSION_LOG" "$SPARE_DIR/test-session.log"; } \
+    && cp "$TARBALL.sha256" "$SPARE_DIR/"; then
+    log "== finish: spare copy of the final outputs in $SPARE_DIR"
+  else
+    log "== finish: spare copy of the final outputs FAILED (they stay on the container disk only)"
+  fi
+}
+
 finish() {
-  local why
+  local why verdict
   [ "$FINISHED" = 1 ] && return 0
   FINISHED=1
   log "== finish: failed stages: ${FAILED[*]:-none}; skipped: ${SKIPPED[*]:-none}; resumed: ${RESUMED[*]:-none}"
@@ -372,9 +431,12 @@ finish() {
     printf '%s\n' ${SKIPPED[@]+"${SKIPPED[@]}"} >"$OUT_DIR/skipped-stages.txt"
     [ -f "$EXP35/output/run-records.jsonl" ] && cp -p "$EXP35/output/run-records.jsonl" "$OUT_DIR/"
   fi
+  offsite_retry
   run tar -czf "$TARBALL" --exclude=stores -C "$(dirname "$OUT_DIR")" "$(basename "$OUT_DIR")" \
     || log "tarball FAILED; the outputs stay in $OUT_DIR"
   [ "$DRY_RUN" = 1 ] || checksum "$TARBALL" >"$TARBALL.sha256"
+  spare_final
+  offsite_final
   log "TEST_SESSION_DONE: copy $TARBALL (+ .sha256) to the Mac, touch $PULLED, then delete the pod"
   wait_for_pull
   if [ "$KEEP_POD_ON_FAIL" = 1 ] && { [ "${#FAILED[@]}" -gt 0 ] || [ "$SIGNALLED" = 1 ]; }; then
@@ -382,7 +444,20 @@ finish() {
     why="stopped by a signal"
     [ "${#FAILED[@]}" -eq 0 ] || why="failed stages: ${FAILED[*]}"
     log "POD_KEPT: $why; fix, then relaunch with RESUME=1, or delete the pod from the Mac"
+    hold_for_mac
     return 0
+  fi
+  # The Mac writes its verdict (ok, hash-mismatch, pull-failed or none) into PULLED. Only
+  # "ok" lets the pod stop: otherwise the Mac prints KEEP_POD and the pod must stay.
+  if [ "$DRY_RUN" != 1 ] && [ -e "$PULLED" ]; then
+    verdict=""
+    read -r verdict _ <"$PULLED" || true
+    if [ "$verdict" != ok ]; then
+      KEPT=1
+      log "POD_KEPT: the Mac's copy is not verified ($verdict); fix, then delete the pod from the Mac"
+      hold_for_mac
+      return 0
+    fi
   fi
   stop_pod
 }
@@ -390,6 +465,10 @@ finish() {
 main() {
   [ -n "$WORK" ] || refuse "WORK is not set. Set it to the container-disk work folder (for example /root/exp35-work). This script never uses /workspace as a default."
   need OUT_DIR STAGES_FILE
+  [ -z "${RESUME_FROM_COMMIT:-}" ] || [[ $RESUME_FROM_COMMIT =~ ^[0-9a-f]{40}$ ]] \
+    || refuse "RESUME_FROM_COMMIT must be the full 40-character commit SHA (lower-case hex)"
+  RUN_COMMIT="$(git -C "$EXP35" rev-parse HEAD 2>/dev/null)" \
+    || refuse "cannot read the commit of the repository at $EXP35 (git rev-parse HEAD failed)"
   precheck
   if [ "$RESUME" != 1 ] && compgen -G "$STAGE_OUT/*.tgz" >/dev/null; then
     refuse "$STAGE_OUT already holds stage tarballs from an earlier run. Relaunch with RESUME=1, or move that folder aside, so a fresh run never mixes with old stages."
@@ -399,9 +478,10 @@ main() {
   export SESSION_PID=$$
   if [ "$DRY_RUN" != 1 ]; then
     mkdir -p "$WORK" "$OUT_DIR" "$STAGE_OUT"
-    rm -f "$PULLED" "$BACKGROUND_PIDS"
-    [ "$RESUME" = 1 ] || rm -f "$BG_FILES"
+    rm -f "$PULLED" "$BACKGROUND_PIDS" "$HOLDING" "$HOLD_RELEASED" # no marker of an earlier run
+    [ "$RESUME" = 1 ] || rm -f "$BG_FILES" "$OFFSITE_PENDING"
   fi
+  offsite_setup
   trap finish EXIT
   trap 'SIGNALLED=1; exit 143' TERM HUP INT
   log "test pod session: work $WORK, out $OUT_DIR, cap $SESSION_CAP, dry-run $DRY_RUN"

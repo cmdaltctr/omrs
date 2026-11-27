@@ -73,9 +73,13 @@ def test_a_finished_stage_is_packed_with_its_tag_and_the_sha256_comes_last(tmp_p
     # Value lines do not count: beta is stage 2.
     assert sorted(p.name for p in out.iterdir()) == [
         "01-alpha.tgz",
+        "01-alpha.tgz.commit",
         "01-alpha.tgz.sha256",
+        "01-alpha.tgz.unpacked",
         "02-beta.tgz",
+        "02-beta.tgz.commit",
         "02-beta.tgz.sha256",
+        "02-beta.tgz.unpacked",
     ]
     assert _members(out / "01-alpha.tgz") == {
         "smoke-out/a.txt",

@@ -35,7 +35,7 @@ STAGE = (
 
 
 def _launch(
-    tmp_path: Path, environ: dict[str, str], zai: str = ZAI_URL
+    tmp_path: Path, environ: dict[str, str], zai: str = ZAI_URL, stage: str = STAGE
 ) -> subprocess.CompletedProcess[str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -48,7 +48,7 @@ def _launch(
     entries = ["PATH=/usr/bin", "HOME=/root", *(f"{k}={v}" for k, v in environ.items())]
     fake.write_bytes(b"\0".join(e.encode() for e in entries) + b"\0")
     stages = tmp_path / "stages.txt"
-    stages.write_text(STAGE, encoding="utf-8")
+    stages.write_text(stage, encoding="utf-8")
     session_env = tmp_path / "session.env"
     session_env.write_text(
         f"OUT_DIR={tmp_path / 'out'}\nSTAGES_FILE={stages}\nWORK={tmp_path / 'work'}\n",
@@ -177,3 +177,24 @@ def test_the_spare_folder_is_set_only_when_workspace_is_a_mount_point(
     else:
         assert "exp35-stage-out" not in out and "/elsewhere" not in out
         assert out.count("no spare copy") == 1
+
+
+R2_VALUES = {
+    "R2_ACCESS_KEY_ID": "r2id-SECRET-ACCESS-111",
+    "R2_SECRET_ACCESS_KEY": "r2sec-SECRET-VALUE-222",
+    "R2_ENDPOINT": "https://acct123abc.fake-r2.invalid",
+}
+
+
+def test_the_launch_copies_the_r2_values_from_process_1_and_prints_none(tmp_path: Path) -> None:
+    stage = (
+        "envcheck sh -c 'for n in "
+        + " ".join(R2_VALUES)
+        + '; do printenv "$n" > "$OUT_DIR/$n"; done\'\n'
+    )
+    result = _launch(tmp_path, {**VALUES, **R2_VALUES}, stage=stage)
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, output
+    for name, value in R2_VALUES.items():
+        assert (tmp_path / "out" / name).read_text().strip() == value
+        assert value not in output

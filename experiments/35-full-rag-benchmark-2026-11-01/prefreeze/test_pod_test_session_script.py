@@ -45,7 +45,7 @@ exit "${{STUB_CURL_RC:-0}}"
 """
 _SLEEP = """#!/usr/bin/env bash
 n=$(( $(cat "{t}/sleeps" 2>/dev/null || echo 0) + 1 )); echo "$n" > "{t}/sleeps"
-[ "$n" -ge "${{STUB_PULLED_AFTER:-999}}" ] && touch "{t}/work/PULLED"
+[ "$n" -ge "${{STUB_PULLED_AFTER:-999}}" ] && echo "${{STUB_VERDICT-ok}}" > "{t}/work/PULLED"
 exit 0
 """
 _RUNNER = """#!/usr/bin/env bash
@@ -109,6 +109,8 @@ def _run(
         "STAGES_FILE": str(stage_file),
         "RUNPOD_POD_ID": "pod123",
         "RUNPOD_API_KEY": KEY,
+        "STOP_RETRY_S": "0",
+        "KEEP_HOLD_MIN": "0",  # the old rule: a kept pod runs on. test_pod_keephold35.py holds.
         **HOSTED,
         **env,
     }

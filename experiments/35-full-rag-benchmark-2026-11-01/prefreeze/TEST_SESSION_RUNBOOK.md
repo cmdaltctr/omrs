@@ -45,10 +45,12 @@ This runbook is for the operator's agent. The agent creates and deletes the pod 
 
 10. Read the watcher output while it runs. It prints one line for each stage start and end.
 11. Read `list-pod-billing` every 2 hours. Add the OpenRouter session spend.
-12. If the total spend reaches $18, stop the watcher: `kill -TERM "$(cat <results folder>/watcher.pid)"`.
+12. If the total spend reaches $18, stop the run on purpose: `touch <results folder>/STOP`, then `kill -TERM "$(cat <results folder>/watcher.pid)"`.
     The first output line names the results folder. Do not use `pgrep` or `pkill`: they also match the `caffeinate` and `uv` parents.
-    The watcher then pulls the outputs and prints `DELETE_POD_NOW`. It ignores a second signal, so the pull finishes.
+    The watcher then stops the chain, pulls the outputs and prints `DELETE_POD_NOW`. It ignores a second signal, so the pull finishes.
+    A signal without the `STOP` file only detaches the watcher. The chain runs on. See exit code 15.
 13. Wait for the watcher to exit. Its last line is `DELETE_POD_NOW <id>`.
+    After a clean end the watcher stops the pod itself. See "Pod stop" below. Look for `pod-stop=mac-api` in the `RESULT` line.
 14. Delete the pod with `delete-pod` and that id. Do this for every exit code except 14.
     Exit 14 ends with `KEEP_POD <id>`: the pod stays up for a fix. Follow "Resume after a failure".
 15. If the watcher process ended without the `DELETE_POD_NOW` or `KEEP_POD` line, delete the pod all the same.
@@ -60,15 +62,16 @@ This runbook is for the operator's agent. The agent creates and deletes the pod 
 
 ## Exit codes
 
-Every code except 14 ends with `DELETE_POD_NOW <id>`. Delete the pod for those codes.
-Code 14 ends with `KEEP_POD <id>`. Keep the pod, fix the cause, then resume.
+Delete the pod only when the last line is `DELETE_POD_NOW <id>`. When the last line is `KEEP_POD <id>`, keep the pod and read the reason on that line.
+A `KEEP_POD` line follows exit code 14, a final pull that did not end `ok`, an `OFFSITE_NOT_VERIFIED` line, a stage tarball that the Mac lacks, and every `--attach` that did not succeed.
+Fix the cause, then resume or attach.
 
 | Code | Meaning | Extra action |
 | ---: | --- | --- |
-| 0 | `TEST_SESSION_DONE`, outputs pulled, SHA-256 matches | None. |
+| 0 | `TEST_SESSION_DONE`, outputs pulled, SHA-256 matches, off-site verified. The watcher stopped the pod (`pod-stop=mac-api`), or the pod stopped itself (`pod-stop=sent`) | None. Delete the pod. |
 | 1 | Internal error in the watcher | Report the error line. |
 | 2 | Refused before any remote step | Fix the `REFUSED:` line on the Mac before the next pod. |
-| 3 | `POD_STOP_FAILED`: the pod did not stop itself | Delete at once. The GPU still bills. |
+| 3 | `POD_STOP_FAILED`: the Mac stop failed or was not confirmed, and the pod did not stop itself after 3 rounds of the stop methods, 30 s apart (`STOP_RETRY_S`). The log holds one `pod stop: <method> exit <code>: <error>` line for each failed try | Delete at once. The GPU still bills. Report the `pod stop:` lines. |
 | 4 | No SSH within 15 minutes | Report it. |
 | 5 | A pod setup step failed (copy, SHA-256, clone, launch) | Report the `remote step failed` line. |
 | 6 | A `STOP:` line in the chain log | Read the `STOP:` line in the pulled log. Fix on the Mac. |
@@ -77,11 +80,39 @@ Code 14 ends with `KEEP_POD <id>`. Keep the pod, fix the cause, then resume.
 | 9 | Wall-clock cap reached | Report the stages that did not run. |
 | 10 | No SSH for 10 minutes while watching | Outputs are probably lost. Report it. |
 | 11 | The pull failed, or the SHA-256 differs | Keep the files as they are. Report it. |
-| 12 | Stopped by a signal (SIGTERM, SIGINT or SIGHUP) | Report why you stopped it. |
+| 12 | Stopped on purpose: a signal after `touch <results folder>/STOP` | Report why you stopped it. |
 | 13 | No public IP for `22/tcp` within 15 minutes (step 2b) | Report it. Nothing was copied. |
-| 14 | The chain logged `POD_KEPT:` (`--keep-pod-on-fail`, a stage failed or a signal stopped the chain) | Keep the pod. Follow "Resume after a failure". Delete the pod yourself when you stop. |
+| 14 | The chain logged `POD_KEPT:` (`--keep-pod-on-fail`, a stage failed or a signal stopped the chain, or the final pull was not `ok`) | Keep the pod. Follow "Resume after a failure". The pod stops itself after `KEEP_HOLD_MIN` minutes (see "Kept pod hold"). Delete the pod yourself when you stop. |
+| 15 | Detached: a signal (SIGTERM, SIGINT or SIGHUP) without a `STOP` file. The chain runs on. No pull, no `PULLED`. | Keep the pod. Rejoin with the `--attach` command that the watcher printed. See "When the Mac goes away". |
 
-After codes 8, 9 and 12 the watcher first sends `tmux kill-session -t exp35` to the pod. The chain then stops its stage and writes the tarball. The watcher waits up to 3 minutes for the tarball, then pulls. If the stop fails or times out, the watcher pulls anyway.
+After codes 8, 9 and 12 (not 15) the watcher first sends `tmux kill-session -t exp35` to the pod. The chain then stops its stage and writes the tarball. The watcher waits up to 3 minutes for the tarball, then pulls. If the stop fails or times out, the watcher pulls anyway.
+
+## Pod stop
+
+The `RESULT` line ends with `pod-stop=<value>`.
+
+| Value | Meaning |
+| --- | --- |
+| `mac-api` | The watcher sent the stop and read the pod status `EXITED`. |
+| `sent` | The pod stopped itself. The Mac stop was skipped (no API key) or not confirmed. |
+| `FAILED` | Exit 3. No stop worked. Delete the pod at once. |
+| `kept` | The chain kept the pod (exit 14). It holds for `KEEP_HOLD_MIN` minutes, then stops the pod. |
+| `ssh-closed`, `not-seen` | The watcher did not see the pod stop. Read `list-pods`. |
+| `not-expected` | The end was not a clean `TEST_SESSION_DONE`. The pod stop was not waited for. |
+
+The watcher stops the pod only after all of these are true:
+
+1. The end is `TEST_SESSION_DONE` with exit code 0 (not a `STOP:` line, idle, the cap or a signal).
+2. The final pull ended `ok` (SHA-256 matches).
+3. The off-site copy is verified, or `--no-offsite` is set.
+4. No stage tarball is missing on the Mac.
+5. The chain did not keep the pod. With `--keep-pod-on-fail`, no stage failed.
+
+If any condition fails, the watcher sends no stop. The watcher writes `PULLED` with the verdict `ok` before the off-site check. The pod can therefore still stop itself when only the off-site check or a stage tarball failed. This pod behaviour did not change.
+
+The watcher sends `POST https://api.runpod.io/v2/pods/<id>/action` with `{"action":"stop"}`. It then reads the pod status every 10 s for up to 3 minutes. It reads the key as in step 8 and never prints it.
+It never deletes or terminates a pod. If the POST or the status check fails, the watcher waits up to 5 minutes for the pod's own stop. The pod still writes its own stop after it sees `PULLED`. That stop is the path when the Mac is away.
+A stopped pod still exists. Delete it as in step 14.
 
 ## Where the work lives
 
@@ -338,23 +369,119 @@ Fix forward. Do not re-run the whole check.
 7. Dry-run it as in "Before the go", with `--stages freeze_rerun_stages.txt`. Then run it on a new pod.
 8. To fix on the same pod and keep the finished stages, use "Resume after a failure" below.
 
+### Kept pod hold
+
+A kept pod bills until someone stops it. The chain therefore holds a kept pod for a limited time.
+
+1. Two cases keep the pod: `KEEP_POD_ON_FAIL=1` with a failed stage or a signal, and a `PULLED` verdict other than `ok`.
+2. After the `POD_KEPT:` line, the chain logs `POD_KEPT: holding up to <N> min for the Mac, then the pod stops itself (the volume and R2 copies stay)`.
+3. `KEEP_HOLD_MIN` sets `<N>`. The default is 120. Write another value in `session.env` or in the environment. `0` means no hold and no stop: the pod runs on.
+4. The chain checks every `PULL_POLL_S` seconds (default 10) whether the Mac took over.
+5. The Mac took over when `$WORK/HOLD_RELEASED` exists, or when `session.env` is newer than `$WORK/HOLDING`. The watcher writes `HOLD_RELEASED` before each relaunch (`--resume`, `--seed-from`). Then the chain ends and the pod keeps running.
+6. `--attach` does not take over. The hold runs on and stops the pod at its end.
+7. At the end of the time, the chain logs `POD_KEPT: no Mac after <N> min: stopping the pod`. It then stops the pod. It never terminates the pod.
+8. The `/workspace` volume and the R2 copies stay. The container disk is cleared. The Mac holds the pulled stage tarballs.
+9. To keep a pod for longer, start the watcher again with `--resume` before the time ends. Or set a larger `KEEP_HOLD_MIN` in `session.env` before the launch.
+10. If the stop fails, the chain logs `POD_STOP_FAILED` and exits with code 3. Delete the pod from the console.
+11. A relaunch works because the watcher releases the hold first. The launch refuses while the held chain's tmux session `exp35` runs.
+
 ### Resume after a failure
 
 Use this when a stage failed, the cause is fixable, and the pod must keep its finished stages.
 
 1. Start the first launch with `--keep-pod-on-fail`. The watcher writes `KEEP_POD_ON_FAIL=1` into `session.env`.
-2. Wait for the `POD_KEPT:` line in the chain log. The chain stops without stopping the pod.
+2. Wait for the `POD_KEPT:` line in the chain log. The chain does not stop the pod at once. It holds for `KEEP_HOLD_MIN` minutes (see "Kept pod hold").
 3. Check that the watcher pulled every stage tarball of the finished stages. Look for `stage tarball <tag>.tgz pulled` lines.
 4. Fix the cause on the Mac. Write a test that fails first, then make it pass.
 5. Commit and push the fix. Use the new commit as `COMMIT`.
-   A skipped stage keeps its old result. Make sure the fix does not change the result of a skipped stage.
+   Each stage tarball has a `<tag>.tgz.commit` file. It holds the commit that made the tarball.
+   A stage made at an older commit runs again, unless you name that commit in step 6.
+   Name the old commit only for stages that the fix does not touch.
 6. Start the watcher again with the same `--pod-id` and `--stages`. Add `--resume` and the new `--commit`.
-7. The watcher writes `RESUME=1` into `session.env`. It moves the old `test-session.log` aside as `.attempt<k>`.
-8. The chain runs the `!` stages and the background launchers again. It skips each stage that has a matching tarball.
-9. Read `== <stage>: SKIPPED (resume, done in <tag>.tgz)` for each skipped stage.
+   To keep the stages of the old commit, add `--resume-from-commit <old sha>` (the full 40-character SHA).
+   The flag needs `--resume`.
+7. The watcher writes `RESUME=1` into `session.env`. With the flag, it also writes `RESUME_FROM_COMMIT=<old sha>`.
+   It moves the old `test-session.log` aside as `.attempt<k>`.
+8. The chain runs the `!` stages and the background launchers again. It skips each stage that has a matching tarball made at the new commit.
+   It also skips each matching tarball made at `RESUME_FROM_COMMIT`.
+   Every other stage runs again.
+9. Read `== <stage>: SKIPPED (resume, done in <tag>.tgz)` for each stage made at the new commit.
+   Read `== <stage>: SKIPPED (resume, done in <tag>.tgz at <old sha>, this run is <new sha>; RESUME_FROM_COMMIT)` for each stage kept from the old commit.
+   Read `== <stage>: done at <old sha or unknown>, this run is <new sha>: running it again` for each stage that runs again.
    Read the `resumed:` names in the `finish` line at the end.
+   `resume-record.jsonl` in the outputs holds one line for each stage kept from the old commit. It is the deviation record for the report (prereg section 20).
 10. If a tarball hash does not match, the chain logs `tarball hash mismatch` and runs the stage again.
-11. If the pod was deleted, its spare copy is gone. Start a new pod and a fresh run.
+11. If the pod was deleted, its spare copy is gone. Start a new pod and use `--seed-from` (see "When the Mac goes away").
 12. A fresh launch refuses to start when `stage-out/` holds tarballs. Move the folder aside, or use `--resume`.
 13. Delete the pod yourself when the run is done or you give up. The watcher never deletes a pod.
+    A pod that the hold stopped is only stopped. Start it again from the console, or delete it.
 14. The layout test `freeze_layout_stages.txt` proves this procedure. It stops once on purpose at `resume-probe` and resumes. About 45 min and $0.70.
+
+### When the Mac goes away
+
+The chain keeps running when the Mac is off. Each finished stage stays on the pod as a tarball. The chain stops the pod after `STOP_GRACE_MIN` minutes without a pull.
+A kept pod (`POD_KEPT:`) stops itself after `KEEP_HOLD_MIN` minutes without the Mac. See "Kept pod hold".
+
+1. When the chain ends, it copies three files to the spare folder `/workspace/exp35-stage-out`: `test-session-out.tgz`, `test-session.log` and `test-session-out.tgz.sha256`. The `.sha256` file is last. The spare folder exists only when `/workspace` is a mount.
+2. The chain log path is `SESSION_LOG`. The default is `$WORK/test-session.log`.
+
+The pod still runs and the chain still runs:
+
+1. Start the watcher with the same `--pod-id`, `--commit` and `--stages`. Add `--attach`.
+2. The watcher uses the earlier results folder. It refuses when `pod-id.txt` names another pod or is missing.
+3. The watcher refuses when no tmux session `exp35` runs on the pod. It then prints `KEEP_POD`. The pod and its stage tarballs stay as they are.
+4. The watcher does not copy the inputs. It does not write `session.env`. It does not launch the chain.
+5. The watcher pulls only the stage tarballs that the results folder does not hold. It then ends as in a normal run.
+6. Do not use `--attach` with `--resume` or `--seed-from`.
+
+The pod is stopped, not deleted:
+
+1. Restart the pod from the RunPod console.
+2. Start the watcher with `--resume` and the same arguments. Follow "Resume after a failure".
+
+The pod or its volume is lost, and the Mac holds the stage tarballs:
+
+1. Create a new pod. Use its id as `--pod-id`.
+2. Leave the old results folder as it is. The watcher never overwrites a folder. On the same day, it makes `test-session-<date>-seed<n>` (the next free `n`) for the new session. `--resume` and `--attach` find the newest folder that recorded their `--pod-id`.
+3. Start the watcher with the new `--pod-id`, the same `--commit` and `--stages`. Add `--seed-from <absolute path of the old results folder>`.
+4. The watcher checks the SHA-256 of each stage tarball in the old `stage-out/`. A mismatch is a `PROBLEM` and nothing starts.
+5. The watcher copies the inputs. It then copies each `<tag>.tgz`, `<tag>.tgz.commit` and `<tag>.tgz.sha256` to the new pod and to the new results folder.
+6. The watcher writes `RESUME=1` into `session.env`. It writes `seed-from.txt` into the new results folder. The file names the old folder and lists each seeded tag with its SHA-256 and commit.
+7. The chain runs the `!` stages again. For each stage that it skips, it unpacks the tarball first and logs `== <stage>: unpacked <tag>.tgz (seeded)`.
+8. To use a newer `--commit`, add `--resume-from-commit <old sha>` only for stages the fix does not touch.
+9. Do not use `--seed-from` with `--resume` or `--attach`.
+
+### Off-site copy in Cloudflare R2
+
+The chain uploads each finished stage and the final outputs to a private R2 bucket. A lost pod or a lost Mac then loses no result.
+
+Policy: by owner decision on 2026-11-27, experiment results go to a private R2 bucket. This protects the main run. The data still never goes to a public host.
+
+Before the go:
+
+1. Make sure these RunPod account secrets exist: `r2-exp35-key-id`, `r2-exp35-secret` and `r2-exp35-endpoint`. `create_pod35.py` gives them to the pod as `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_ENDPOINT`.
+2. Make sure the Mac file `~/.config/omrs/secrets/r2-exp35.env` exists, mode 600. It holds three lines: `R2_ACCESS_KEY_ID=`, `R2_SECRET_ACCESS_KEY=` and `R2_ENDPOINT=`. Never type a value in a command or a chat.
+3. Run the dry run. It shows `PROBLEM:` when the file is missing, is not mode 600, or lacks a name.
+
+In the session:
+
+1. The watcher writes `OFFSITE_REQUIRED=1` and `R2_PREFIX=<results folder name>/<pod id>` into `session.env`.
+2. The bucket is `omrs-exp35-results`. After each stage, the chain uploads `<tag>.tgz`, `<tag>.tgz.commit` and `<tag>.tgz.sha256` (last) to `<prefix>/stage-out/`.
+3. At the end, the chain uploads `test-session-out.tgz`, `test-session.log` and `test-session-out.tgz.sha256` (last) to `<prefix>/final/`.
+4. Before the first stage, the chain uploads `<prefix>/probe.txt`. The chain refuses to start (exit 2) when a value is empty or the probe fails. This also proves that `curl` on the pod supports `--aws-sigv4`.
+5. Each upload has 3 tries. A copy that fails 3 times goes to `/root/exp35-work/offsite.pending`. The chain retries the list once at the end. It logs `== <stage>: off-site copy FAILED (kept for a retry at the end)` and `== finish: off-site copies failed: <n>`. The keys that still fail are in `offsite-failed.txt` in the outputs.
+6. At the end, the watcher reads each `.sha256` object of the stage and final tarballs that the Mac holds. It compares each one with the local file.
+7. Read `off-site: <n> stage, <m> final verified in r2://<bucket>/<prefix>`.
+8. If you read `!!! OFFSITE_NOT_VERIFIED: <names>`, the last line is `KEEP_POD`. Do not delete the pod. The pod may hold the only copy.
+9. `--no-offsite` turns the upload and the check off, for a test or a deliberate local-only run. The summary then reads `off-site: OFF (--no-offsite)`.
+
+If the pod and the Mac copies are both lost, fetch an object by hand. Read the key pair from the key file. Do not type it:
+
+```bash
+set -a; . ~/.config/omrs/secrets/r2-exp35.env; set +a
+printf 'user = "%s:%s"\n' "$R2_ACCESS_KEY_ID" "$R2_SECRET_ACCESS_KEY" \
+  | curl -fsS --aws-sigv4 "aws:amz:auto:s3" -K - -o <tag>.tgz \
+    "$R2_ENDPOINT/omrs-exp35-results/<prefix>/stage-out/<tag>.tgz"
+```
+
+Then check the file with its `.sha256` object. The watcher does not restore from R2. Use `--seed-from` for a new pod.

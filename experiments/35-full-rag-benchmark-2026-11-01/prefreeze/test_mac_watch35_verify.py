@@ -43,7 +43,12 @@ def test_a_verify_session_ships_the_extra_input_and_names_its_stages_file(tmp_pa
     assert len(checks) == 1 and f"{_sha(extra)} fb-answers.tgz" in checks[0]
     env = (s.work / "session.env").read_text(encoding="utf-8").splitlines()
     remote = REMOTE.replace(mac_watch35.WORK, str(s.work))
-    assert env == [f"COMMIT={s.commit}", "STOP_GRACE_MIN=120", f"STAGES_FILE={remote}/{VERIFY}"]
+    assert env == [
+        f"COMMIT={s.commit}",
+        "STOP_GRACE_MIN=120",
+        f"STAGES_FILE={remote}/{VERIFY}",
+        "OFFSITE_REQUIRED=0",
+    ]
     assert KEY_BODY not in output
 
 
@@ -55,7 +60,7 @@ def test_the_default_session_names_the_test_session_stages_and_ships_no_extra(
     assert result.returncode == 0, result.stdout + result.stderr
     assert len(_folders(s, "test-session")) == 1
     env = (s.work / "session.env").read_text(encoding="utf-8").splitlines()
-    assert env[-1].endswith("/prefreeze/test_session_stages.txt")
+    assert env[2].endswith("/prefreeze/test_session_stages.txt")  # then OFFSITE_REQUIRED
     names = sorted(p.name for p in (s.work / "inputs").iterdir())
     assert names == ["classify-examples.json", "exp35-inputs.tgz", "exp35-inputs.tgz.sha256"]
 

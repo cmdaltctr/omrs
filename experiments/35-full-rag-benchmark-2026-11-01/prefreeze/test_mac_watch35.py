@@ -111,7 +111,8 @@ case "$step" in
   badsha) pack; printf '%064d  %s\n' 0 "$W/test-session-out.tgz" > "$W/test-session-out.tgz.sha256"
     echo "[00:09:00] TEST_SESSION_DONE: copy the tarball" >> "$LOG" ;;
   dead) rm -f "$P/alive" ;;
-  term) kill -TERM "$WATCHER_PID" ;;
+  term) for d in "$T"/data/*/*/*-session-*; do touch "$d/STOP"; done; kill -TERM "$WATCHER_PID" ;;
+  detach) kill -TERM "$WATCHER_PID" ;;
   ssh-off) touch "$T/ssh.dead" ;;
   '') if [ -e "$W/PULLED" ]; then
         if [ -e "$P/stop-fails" ]; then echo "[00:10:00] POD_STOP_FAILED: no stop worked" >> "$LOG"
@@ -129,6 +130,7 @@ class Session:
 
     def __init__(self, tmp: Path, steps: list[str] | None = None) -> None:
         self.tmp = tmp
+        self.base_args = ["--no-offsite"]  # a test of the off-site check sets it to []
         self.root = tmp / "data"
         self.pod = tmp / "pod"
         self.work = self.pod / "root/exp35-work"  # the pod's /root/exp35-work
@@ -193,7 +195,7 @@ class Session:
     def run(self, *args: str, **env: str) -> subprocess.CompletedProcess[str]:
         cmd = [sys.executable, str(WATCH), "--pod-id", POD, "--ssh-host", "203.0.113.7"]
         cmd += ["--ssh-port", "40022", "--commit", self.commit, "--examples", str(self.examples)]
-        cmd += ["--ssh-key", str(self.key), "--repo-url", str(self.url), *args]
+        cmd += ["--ssh-key", str(self.key), "--repo-url", str(self.url), *self.base_args, *args]
         return subprocess.run(
             cmd, env=self._env(**env), capture_output=True, text=True, timeout=120, cwd=self.tmp
         )
@@ -242,7 +244,8 @@ def test_a_done_session_is_pulled_checked_marked_and_ends_with_the_delete_line(
     assert (inputs / "classify-examples.json").read_bytes() == s.examples.read_bytes()
     session_env = (s.work / "session.env").read_text(encoding="utf-8")
     stages = f"{s.work}/omrs/experiments/{HERE.parent.name}/prefreeze/test_session_stages.txt"
-    assert session_env == f"COMMIT={s.commit}\nSTOP_GRACE_MIN=120\nSTAGES_FILE={stages}\n"
+    want = f"COMMIT={s.commit}\nSTOP_GRACE_MIN=120\nSTAGES_FILE={stages}\n"
+    assert session_env == want + "OFFSITE_REQUIRED=0\n"
     clone = s.work / "omrs"
     head = subprocess.run(["git", "-C", str(clone), "rev-parse", "HEAD"], capture_output=True)
     assert head.stdout.decode().strip() == s.commit
@@ -336,16 +339,16 @@ def test_a_stop_line_waits_for_the_chain_tarball_before_the_pull(tmp_path: Path)
     assert _last(result) == f"DELETE_POD_NOW {POD}"
 
 
-def test_lost_ssh_ends_the_watch_and_still_prints_delete(tmp_path: Path) -> None:
+def test_lost_ssh_ends_the_watch_and_keeps_the_pod(tmp_path: Path) -> None:
     s = Session(tmp_path, ["+[00:00:01] == a: start", "ssh-off"])
     result = s.run()
     assert result.returncode == 10
     assert "RESULT end=ssh-lost outputs=pull-failed pulled-marker=not-written" in result.stdout
     assert not (s.work / "PULLED").exists()
-    assert _last(result) == f"DELETE_POD_NOW {POD}"
+    assert _last(result).startswith(f"KEEP_POD {POD}")
 
 
-def test_a_hash_mismatch_on_pull_is_loud_and_still_prints_delete(tmp_path: Path) -> None:
+def test_a_hash_mismatch_on_pull_is_loud_and_keeps_the_pod(tmp_path: Path) -> None:
     s = Session(tmp_path, ["badsha"])
     result = s.run()
     assert result.returncode == 11
@@ -355,7 +358,7 @@ def test_a_hash_mismatch_on_pull_is_loud_and_still_prints_delete(tmp_path: Path)
     pulls = [line for line in s.log("scp.log") if "test-session-out.tgz.sha256" in line]
     assert len(pulls) == 1  # ssh checks bytes in transit; a second copy cannot fix it
     assert (s.folder() / "test-session-out.tgz").is_file()
-    assert _last(result) == f"DELETE_POD_NOW {POD}"
+    assert _last(result).startswith(f"KEEP_POD {POD}")
 
 
 def test_a_failed_tarball_copy_is_tried_once_more(tmp_path: Path) -> None:
@@ -487,9 +490,7 @@ def test_the_watcher_matches_the_chain_launch_and_setup_contract() -> None:
     assert 'TARBALL="$WORK/test-session-out.tgz"' in chain and 'PULLED="$WORK/PULLED"' in chain
     assert mac_watch35.TARBALL == "/root/exp35-work/test-session-out.tgz"
     header = mac_watch35.LAUNCH.replace(mac_watch35.REMOTE_REPO, "<repo>")
-    plain = header.removeprefix(
-        f"WORK={mac_watch35.WORK} "
-    )  # the comment may omit the WORK= prefix
+    plain = header.removeprefix(f"WORK={mac_watch35.WORK} ")  # the comment may omit WORK=
     assert any(f"tmux new-session -d -s exp35 '{h}'" in launch for h in (header, plain))
     assert "$WORK/session.env" in launch and "/workspace/session.env" not in launch
     assert 'OUT_DIR="${OUT_DIR:-$WORK/exp35-test/out}"' in launch
