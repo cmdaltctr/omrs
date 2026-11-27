@@ -51,6 +51,12 @@
 # back to /workspace. Optional: SPARE_DIR (default empty: no spare copy), RESUME=1,
 # KEEP_POD_ON_FAIL=1, SESSION_CAP (default 15h), STOP_GRACE_MIN
 # (default 0), PULL_POLL_S (default 10), DRY_RUN=1 (print every command, run none).
+# Each stage tarball has a <tag>.tgz.commit file: the full SHA of the commit this chain runs
+# from (git -C <Experiment 35 folder> rev-parse HEAD, read once at the start). A resume skips
+# a stage only when that commit is the current one. RESUME_FROM_COMMIT (a full 40-character SHA,
+# optional) lets the owner skip the stages that an older commit made, because the fix did not
+# touch them; each such skip is one JSON line in $OUT_DIR/resume-record.jsonl. A stage that
+# was made at another commit, or has no .commit file, runs again.
 # Exit codes: 0 every stage ok or skipped; 1 a stage failed, timed out or did not
 # start in time; 2 refused before the first stage; 3 the pod stop failed.
 set -uo pipefail
@@ -87,6 +93,9 @@ FATAL=0
 LIMIT=0
 CMD=""
 STAGE_PGID=""
+RUN_COMMIT=""
+TAR_COMMIT=""
+VERDICT=""
 
 # shellcheck source=stage_pack35.sh
 . "$HERE/stage_pack35.sh"
@@ -390,6 +399,10 @@ finish() {
 main() {
   [ -n "$WORK" ] || refuse "WORK is not set. Set it to the container-disk work folder (for example /root/exp35-work). This script never uses /workspace as a default."
   need OUT_DIR STAGES_FILE
+  [ -z "${RESUME_FROM_COMMIT:-}" ] || [[ $RESUME_FROM_COMMIT =~ ^[0-9a-f]{40}$ ]] \
+    || refuse "RESUME_FROM_COMMIT must be the full 40-character commit SHA (lower-case hex)"
+  RUN_COMMIT="$(git -C "$EXP35" rev-parse HEAD 2>/dev/null)" \
+    || refuse "cannot read the commit of the repository at $EXP35 (git rev-parse HEAD failed)"
   precheck
   if [ "$RESUME" != 1 ] && compgen -G "$STAGE_OUT/*.tgz" >/dev/null; then
     refuse "$STAGE_OUT already holds stage tarballs from an earlier run. Relaunch with RESUME=1, or move that folder aside, so a fresh run never mixes with old stages."

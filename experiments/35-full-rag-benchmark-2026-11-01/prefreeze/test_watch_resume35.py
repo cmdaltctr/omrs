@@ -6,10 +6,12 @@ and none creates, stops or deletes a pod.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
+import pytest
 from test_mac_watch35 import POD, Session, _last, _sha
-from test_watch_stages35 import TAG, _stage
+from test_watch_stages35 import TAG, StagePod, _puller, _stage
 
 
 # --resume.
@@ -103,3 +105,113 @@ def test_a_fresh_launch_still_refuses_an_existing_folder(tmp_path: Path) -> None
     assert s.run().returncode == 0
     again = s.run()
     assert again.returncode == 2 and "already exists" in again.stdout
+
+
+# --resume-from-commit and the commit file of each stage tarball.
+SHA = "a" * 40
+
+
+def _env_lines(s: Session) -> list[str]:
+    return (s.work / "session.env").read_text(encoding="utf-8").splitlines()
+
+
+def test_resume_from_commit_writes_the_value_into_session_env(tmp_path: Path) -> None:
+    s = Session(tmp_path, ["done"])
+    assert s.run().returncode == 0
+    _again(s, ["dead"])
+    result = s.run("--resume", "--resume-from-commit", SHA)
+    assert result.returncode == 7, result.stdout + result.stderr
+    assert _env_lines(s)[-2:] == ["RESUME=1", f"RESUME_FROM_COMMIT={SHA}"]
+    _again(s, ["dead"])
+    assert s.run("--resume").returncode == 7  # the next launch without the flag drops it
+    assert not any(x.startswith("RESUME_FROM_COMMIT") for x in _env_lines(s))
+
+
+def test_resume_from_commit_without_resume_is_refused_before_any_step(tmp_path: Path) -> None:
+    s = Session(tmp_path, ["done"])
+    result = s.run("--resume-from-commit", SHA)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "REFUSED" in result.stdout and "--resume-from-commit needs --resume" in result.stdout
+    assert not s.log("ssh.log") and not s.log("scp.log")
+    assert _last(result) == f"DELETE_POD_NOW {POD}"
+    dry = s.run("--dry-run", "--resume-from-commit", SHA)
+    assert dry.returncode == 2 and "PROBLEM: --resume-from-commit needs --resume" in dry.stdout
+
+
+@pytest.mark.parametrize(
+    "bad", ["abc1234", "A" * 40, "z" * 40, "a" * 41], ids=["short", "upper", "not-hex", "long"]
+)
+def test_a_malformed_resume_from_commit_is_refused_before_any_step(
+    tmp_path: Path, bad: str
+) -> None:
+    s = Session(tmp_path, ["done"])
+    assert s.run().returncode == 0
+    before = len(s.log("ssh.log")), len(s.log("scp.log"))
+    result = s.run("--resume", "--resume-from-commit", bad)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert (
+        "REFUSED" in result.stdout and "--resume-from-commit must be the full 40" in result.stdout
+    )
+    assert (len(s.log("ssh.log")), len(s.log("scp.log"))) == before
+    assert not (s.folder() / "test-session.log.attempt1").exists()  # nothing moved aside
+
+
+def test_the_dry_run_shows_the_resume_from_commit_value(tmp_path: Path) -> None:
+    s = Session(tmp_path, ["done"])
+    assert s.run().returncode == 0
+    dry = s.run("--dry-run", "--resume", "--resume-from-commit", SHA)
+    assert dry.returncode == 0, dry.stdout + dry.stderr
+    assert f"RESUME_FROM_COMMIT={SHA}" in dry.stdout
+    assert f"RESUME_FROM_COMMIT={SHA}" not in "\n".join(_env_lines(s))  # a dry run writes nothing
+
+
+class CommitPod(StagePod):
+    """A fake pod whose listing says which tarballs have a ``.commit`` file."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.commits: dict[str, str] = {}  # tarball name -> commit
+
+    def ssh(self, command: str, timeout: float = 120) -> subprocess.CompletedProcess[bytes] | None:
+        assert "stage-out" in command and ".commit" in command
+        text = "".join(
+            f"{n}.sha256 {h} {'commit' if n in self.commits else ''}\n"
+            for n, h in sorted(self.recorded.items())
+        )
+        return subprocess.CompletedProcess([], 0, text.encode(), b"")
+
+    def copy(self, sources: list[str], dest: str, timeout: float = 3600) -> bool:
+        names = [x.rsplit("/", 1)[1] for x in sources]
+        done = super().copy([sources[0], sources[-1]], dest, timeout)
+        self.copies[-1] = names
+        if done and len(names) == 3:
+            (Path(dest) / names[1]).write_text(f"{self.commits[names[0]]}\n", encoding="utf-8")
+        return done
+
+
+def test_the_pull_copies_the_commit_file_with_the_tarball(tmp_path: Path) -> None:
+    pod = CommitPod()
+    pod.add(f"{TAG}.tgz")
+    pod.commits[f"{TAG}.tgz"] = SHA
+    pod.add("02-next.tgz")  # an older chain, or a failed pack: no .commit file
+    puller, said = _puller(tmp_path, pod)
+    puller.pull_new()
+    folder = tmp_path / "stage-out"
+    assert (folder / f"{TAG}.tgz.commit").read_text(encoding="utf-8") == f"{SHA}\n"
+    assert pod.copies == [
+        [f"{TAG}.tgz", f"{TAG}.tgz.commit", f"{TAG}.tgz.sha256"],
+        ["02-next.tgz", "02-next.tgz.sha256"],
+    ]
+    assert (folder / "02-next.tgz").is_file() and not (folder / "02-next.tgz.commit").exists()
+    assert not any("STAGE_HASH_MISMATCH" in x for x in said) and not puller.unresolved()
+
+
+def test_the_watcher_pulls_the_commit_file_of_a_finished_stage(tmp_path: Path) -> None:
+    s = Session(tmp_path, ["+[00:00:01] == a: start", "done"])
+    _stage(s)
+    (s.work / "stage-out" / f"{TAG}.tgz.commit").write_text(f"{SHA}\n", encoding="utf-8")
+    result = s.run()
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (s.folder() / "stage-out" / f"{TAG}.tgz.commit").read_text(
+        encoding="utf-8"
+    ) == f"{SHA}\n"

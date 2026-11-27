@@ -27,11 +27,22 @@ _ASIDE = ("test-session.log", "test-session-out.tgz", "test-session-out.tgz.sha2
 
 
 def list_cmd(stage_dir: str) -> str:
-    """Return the one ssh command that lists ``<name>.tgz.sha256 <hash>`` for each ready stage."""
+    """Return the one ssh command that lists each ready stage.
+
+    A line is ``<name>.tgz.sha256 <hash> [commit]``: the last word is there when the stage
+    also has a ``<name>.tgz.commit`` file (the commit the chain ran from).
+    """
     return (
         f"cd {shlex.quote(stage_dir)} 2>/dev/null && for f in *.tgz.sha256; do "
-        f'[ -f "$f" ] && printf \'%s %s\\n\' "$f" "$(cut -d\' \' -f1 "$f")"; done; true'
+        f'[ -f "$f" ] && printf \'%s %s %s\\n\' "$f" "$(cut -d\' \' -f1 "$f")" '
+        f'"$([ -f "${{f%.sha256}}.commit" ] && echo commit)"; done; true'
     )
+
+
+def flag_values(plan: Any) -> list[str]:
+    """Return the session.env lines of the keep, resume and resume-from-commit flags."""
+    values = ["KEEP_POD_ON_FAIL=1"] * plan.keep + ["RESUME=1"] * plan.resume
+    return values + [f"RESUME_FROM_COMMIT={plan.resume_from}"] * bool(plan.resume_from)
 
 
 def dry_lines(work: str, stage_dir: str) -> list[str]:
@@ -81,6 +92,7 @@ class StagePull:
         self.done: dict[str, str] = {}  # tarball name -> hash the Mac holds
         self.bad: dict[str, str] = {}  # tarball name -> hash that failed twice
         self.listed: set[str] = set()  # the ready tarballs of the last good listing
+        self.with_commit: set[str] = set()  # the ready tarballs that have a .commit file
         for record in sorted(folder.glob("*.tgz.sha256")):  # an earlier try of this session
             tgz = folder / record.name.removesuffix(".sha256")
             want = record.read_text(encoding="utf-8").split()[:1]
@@ -93,23 +105,26 @@ class StagePull:
             return {}
         ready = {}
         for line in found.stdout.decode("utf-8", "replace").splitlines():
-            name, _, digest = line.partition(" ")
+            name, _, rest = line.partition(" ")
             if name.endswith(".sha256") and _NAME.fullmatch(name.removesuffix(".sha256")):
-                ready[name.removesuffix(".sha256")] = digest.strip()
+                tgz, words = name.removesuffix(".sha256"), rest.split()
+                ready[tgz] = words[0] if words else ""
+                (self.with_commit.add if words[1:] == ["commit"] else self.with_commit.discard)(tgz)
         return ready
 
     def _fetch(self, name: str) -> str | None:
         """Copy and check one tarball once: its hash when it matches, else ``""`` or ``None``."""
         staging = self.folder / ".incoming"
         staging.mkdir(parents=True, exist_ok=True)
-        files = [self.pod.remote(f"{self.remote_dir}/{n}") for n in (name, f"{name}.sha256")]
+        names = [name, *([f"{name}.commit"] if name in self.with_commit else []), f"{name}.sha256"]
+        files = [self.pod.remote(f"{self.remote_dir}/{n}") for n in names]
         if not self.pod.copy(files, str(staging), self.copy_s):
             return None  # a failed copy: try again on the next poll
         want = (staging / f"{name}.sha256").read_text(encoding="utf-8").split()[:1]
         found = sha256(staging / name)
         if want != [found]:
             return ""
-        for n in (name, f"{name}.sha256"):
+        for n in names:  # the .sha256 file last: it is the ready signal
             (staging / n).replace(self.folder / n)
         return found
 

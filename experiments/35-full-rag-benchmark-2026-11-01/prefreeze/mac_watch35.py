@@ -127,7 +127,7 @@ def setup_cmds(plan: Plan, shas: dict[str, str]) -> list[str]:
     pairs = " ".join(f"{sha} {shlex.quote(name)}" for name, sha in shas.items())
     values = [f"COMMIT={plan.commit}", f"STOP_GRACE_MIN={STOP_GRACE_MIN}"]
     values.append(f"STAGES_FILE={REMOTE_HERE}/{plan.stages}")
-    values += ["KEEP_POD_ON_FAIL=1"] * plan.keep + ["RESUME=1"] * plan.resume
+    values += watch_stages35.flag_values(plan)
     stale = [TARBALL, f"{TARBALL}.sha256", OWN_TARBALL, f"{OWN_TARBALL}.sha256", PULLED]
     return [
         f"cd {INPUTS} && printf '%s  %s\\n' {pairs} | sha256sum -c -",
@@ -468,6 +468,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--resume", action="store_true", help="re-launch; skip stages done in stage-out"
     )
+    parser.add_argument("--resume-from-commit", default="", help="with --resume: trust this commit")
     parser.add_argument("--dry-run", action="store_true", help="print every step, run nothing")
     _hold.clear()
     try:

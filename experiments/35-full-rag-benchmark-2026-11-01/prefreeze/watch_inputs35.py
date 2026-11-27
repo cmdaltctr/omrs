@@ -87,6 +87,7 @@ class Plan:
     extra: Path | None = None  # --extra-input: one more file for the pod's inputs folder
     keep: bool = False  # --keep-pod-on-fail
     resume: bool = False  # --resume: reuse the folder and the stage tarballs of an earlier try
+    resume_from: str = ""  # --resume-from-commit: the old commit whose finished stages stay valid
     repo_url: str = ""
     root: Path = Path()
     folder: Path = Path()
@@ -120,8 +121,18 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
     """Check every local input; return the problems and the plan. Writes nothing."""
     plan = Plan(args.commit, args.ssh_key.expanduser(), args.examples.expanduser(), args.stages)
     plan.extra = args.extra_input.expanduser() if args.extra_input else None
-    plan.keep, plan.resume = args.keep_pod_on_fail, args.resume
+    plan.keep, plan.resume, plan.resume_from = (
+        args.keep_pod_on_fail,
+        args.resume,
+        args.resume_from_commit,
+    )
     problems = []
+    if plan.resume_from and not plan.resume:
+        problems.append("--resume-from-commit needs --resume")
+    if plan.resume_from and not re.fullmatch(r"[0-9a-f]{40}", plan.resume_from):
+        problems.append(
+            "--resume-from-commit must be the full 40-character commit SHA (lower-case)"
+        )
     if not (args.stages.endswith("_stages.txt") and (HERE / Path(args.stages).name).is_file()):
         problems.append(f"--stages {args.stages} is not a *_stages.txt file in {HERE}")
     if plan.extra and not plan.extra.is_file():

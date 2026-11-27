@@ -347,12 +347,22 @@ Use this when a stage failed, the cause is fixable, and the pod must keep its fi
 3. Check that the watcher pulled every stage tarball of the finished stages. Look for `stage tarball <tag>.tgz pulled` lines.
 4. Fix the cause on the Mac. Write a test that fails first, then make it pass.
 5. Commit and push the fix. Use the new commit as `COMMIT`.
-   A skipped stage keeps its old result. Make sure the fix does not change the result of a skipped stage.
+   Each stage tarball has a `<tag>.tgz.commit` file. It holds the commit that made the tarball.
+   A stage made at an older commit runs again, unless you name that commit in step 6.
+   Name the old commit only for stages that the fix does not touch.
 6. Start the watcher again with the same `--pod-id` and `--stages`. Add `--resume` and the new `--commit`.
-7. The watcher writes `RESUME=1` into `session.env`. It moves the old `test-session.log` aside as `.attempt<k>`.
-8. The chain runs the `!` stages and the background launchers again. It skips each stage that has a matching tarball.
-9. Read `== <stage>: SKIPPED (resume, done in <tag>.tgz)` for each skipped stage.
+   To keep the stages of the old commit, add `--resume-from-commit <old sha>` (the full 40-character SHA).
+   The flag needs `--resume`.
+7. The watcher writes `RESUME=1` into `session.env`. With the flag, it also writes `RESUME_FROM_COMMIT=<old sha>`.
+   It moves the old `test-session.log` aside as `.attempt<k>`.
+8. The chain runs the `!` stages and the background launchers again. It skips each stage that has a matching tarball made at the new commit.
+   It also skips each matching tarball made at `RESUME_FROM_COMMIT`.
+   Every other stage runs again.
+9. Read `== <stage>: SKIPPED (resume, done in <tag>.tgz)` for each stage made at the new commit.
+   Read `== <stage>: SKIPPED (resume, done in <tag>.tgz at <old sha>, this run is <new sha>; RESUME_FROM_COMMIT)` for each stage kept from the old commit.
+   Read `== <stage>: done at <old sha or unknown>, this run is <new sha>: running it again` for each stage that runs again.
    Read the `resumed:` names in the `finish` line at the end.
+   `resume-record.jsonl` in the outputs holds one line for each stage kept from the old commit. It is the deviation record for the report (prereg section 20).
 10. If a tarball hash does not match, the chain logs `tarball hash mismatch` and runs the stage again.
 11. If the pod was deleted, its spare copy is gone. Start a new pod and a fresh run.
 12. A fresh launch refuses to start when `stage-out/` holds tarballs. Move the folder aside, or use `--resume`.
