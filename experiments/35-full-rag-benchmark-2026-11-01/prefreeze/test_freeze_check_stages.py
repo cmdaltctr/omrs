@@ -18,6 +18,7 @@ from test_session_stages import (
     FREEZE_FILE,
     HERE,
     OUT,
+    WORK,
     _calls,
     _folder,
     _opts,
@@ -129,7 +130,7 @@ def test_financebench_ingests_pdfs_without_a_passages_folder() -> None:
         if a.dataset == "financebench":
             assert a.passages_dir is None and a.corpus_sample == 3
         else:
-            assert str(a.passages_dir) == "/workspace/passages"
+            assert str(a.passages_dir) == f"{WORK}/passages"
 
 
 def test_g2_rebuilds_each_index_and_compares_before_the_answer_setup_searches() -> None:
@@ -228,7 +229,7 @@ def test_the_claim_kind_recheck_classifies_after_the_kinds_and_scores_with_the_c
     # Owner, 2026-11-26: informational recheck of the fixed prompt on the gate-2 sample.
     stages = {s.name: s for s in _read(FREEZE_FILE)[0]}
     recheck, score = stages["kinds-recheck"].command, stages["check-kinds-recheck"].command
-    source = "/workspace/inputs/kinds-recheck-input.json"
+    source = "$WORK/inputs/kinds-recheck-input.json"
     assert f"kinds_recheck35.py split --input {source}" in recheck
     assert "refusals35.py classify" in recheck and "examples classify-examples.json" in recheck
     assert f"kinds_recheck35.py score --input {source}" in score

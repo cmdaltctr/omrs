@@ -39,7 +39,7 @@ def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _stubs(tmp_path: Path, *, linux: bool) -> Path:
+def _stubs(tmp_path: Path, *, linux: bool, fs: dict[Path, str] | None = None) -> Path:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     log = tmp_path / "calls.log"
@@ -48,7 +48,9 @@ def _stubs(tmp_path: Path, *, linux: bool) -> Path:
         'case "$*" in *--query-gpu*) echo "NVIDIA GeForce RTX 4090, 24564 MiB" ;; '
         '*) echo "| NVIDIA-SMI 580.95   Driver Version: 580.95   CUDA Version: 13.2 |" ;; esac\n'
     )
-    tools["findmnt"] = "echo overlay\n"
+    # findmnt: the file system type of the folder named by its last argument (default overlay).
+    cases = "".join(f'  "{folder}") echo {kind} ;;\n' for folder, kind in (fs or {}).items())
+    tools["findmnt"] = f'case "${{!#}}" in\n{cases}  *) echo overlay ;;\nesac\n'
     scripts = {name: f'echo "{name} $*" >> "{log}"\n{body}' for name, body in tools.items()}
     if linux:
         scripts["uname"] = "echo Linux\n"
@@ -72,9 +74,15 @@ def _inputs(tmp_path: Path, *, recorded: str | None = None) -> Path:
 
 
 def _run(
-    tmp_path: Path, *args: str, linux: bool = False, recorded: str | None = None
+    tmp_path: Path,
+    *args: str,
+    linux: bool = False,
+    recorded: str | None = None,
+    work: str | None = "default",
+    fs: dict[Path, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    bin_dir = _stubs(tmp_path, linux=linux)
+    """Run the script. ``work`` is the WORK folder: "default" is tmp_path/work, None unsets it."""
+    bin_dir = _stubs(tmp_path, linux=linux, fs=fs)
     home = tmp_path / "home"
     home.mkdir()
     head = subprocess.run(
@@ -87,6 +95,8 @@ def _run(
         "HF_TOKEN": TOKEN,
         "SWEEP_GGUF_DIR": str(tmp_path / "gguf"),
     }
+    if work is not None:
+        env["WORK"] = str(tmp_path / "work") if work == "default" else work
     paths = ["--passages-dir", str(tmp_path / "passages"), "--ragas-venv", str(tmp_path / "rv")]
     paths += ["--ref-venv", str(tmp_path / "ref")]
     inputs = str(_inputs(tmp_path, recorded=recorded))
@@ -256,3 +266,43 @@ def _disk_ok(fstype: str) -> bool:
 )
 def test_the_disk_check_refuses_a_network_file_system(fstype: str, accepted: bool) -> None:
     assert _disk_ok(fstype) is accepted
+
+
+def test_the_work_folder_is_required(tmp_path: Path) -> None:
+    result = _run(tmp_path, linux=True, work=None)
+    assert result.returncode == 1
+    assert "WORK is not set" in result.stderr and "/root/exp35-work" in result.stderr
+    assert "uv sync" not in _calls(tmp_path)  # it stops at step 2, before the installs
+
+
+def test_a_dry_run_counts_a_missing_work_folder_as_a_problem(tmp_path: Path) -> None:
+    result = _run(tmp_path, "--dry-run", work=None)
+    assert result.returncode == 1
+    assert "PROBLEM: WORK is not set" in result.stdout
+
+
+def test_a_dry_run_names_the_paths_the_disk_check_would_look_at(tmp_path: Path) -> None:
+    result = _run(tmp_path, "--dry-run")
+    work = tmp_path / "work"
+    assert f"would check that {work} is on a local disk" in result.stdout
+    assert f"would check that {tmp_path} is on a local disk" in result.stdout  # passages parent
+    assert "/workspace" not in result.stdout
+
+
+@pytest.mark.parametrize("fstype", ["overlay", "xfs"])
+def test_the_real_run_accepts_a_local_work_folder(tmp_path: Path, fstype: str) -> None:
+    work = tmp_path / "work"
+    result = _run(tmp_path, linux=True, fs={work: fstype, tmp_path: fstype})
+    assert f"work disk {work}: {fstype}" in result.stdout
+    assert "uv sync --frozen" in _calls(tmp_path)  # step 3 ran, so step 2 passed
+
+
+@pytest.mark.parametrize("fuse_on", ["work", "passages-parent"])
+def test_the_real_run_refuses_a_network_work_folder_or_passages_folder(
+    tmp_path: Path, fuse_on: str
+) -> None:
+    folder = tmp_path / "work" if fuse_on == "work" else tmp_path
+    result = _run(tmp_path, linux=True, fs={folder: "fuse"})
+    assert result.returncode == 1
+    assert f"{folder} is on file system 'fuse'" in result.stderr
+    assert "uv sync" not in _calls(tmp_path)

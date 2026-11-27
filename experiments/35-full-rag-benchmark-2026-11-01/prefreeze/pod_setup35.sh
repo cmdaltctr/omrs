@@ -27,7 +27,8 @@ Prepares one RunPod RTX 4090 pod (Linux x86-64) for Experiment 35. Steps, in ord
      the Mac with scp (never through git: the repository is public).
   1. Check that `git rev-parse HEAD` equals --commit.
   2. Check that nvidia-smi lists exactly one RTX 4090 and host CUDA 13.0 or newer,
-     and that the passages folder sits on a local disk, not a network file system.
+     and that the work folder $WORK and the folder that holds the passages folder sit
+     on a local disk, not a network file system (WORK is required: no default).
   3. Install uv (pinned version) if it is missing; uv sync --frozen --extra web
      --extra llamacpp --extra hybrid; check that plan.json names the llama.cpp build OMRS installs.
   4. omrs llamacpp install --flavour cuda (the pinned CUDA build).
@@ -44,20 +45,21 @@ Prepares one RunPod RTX 4090 pod (Linux x86-64) for Experiment 35. Steps, in ord
 Options:
   --commit <sha>        Required. The commit the pod must be on.
   --inputs <dir>        Required. Folder with exp35-inputs.tgz and its .sha256 file.
-  --passages-dir <dir>  Default /workspace/passages (the stage lines use it).
-  --ragas-venv <dir>    Default /workspace/ragas-venv (the stage lines use it).
+  --passages-dir <dir>  Default $WORK/passages (the stage lines use it).
+  --ragas-venv <dir>    Default $WORK/ragas-venv (the stage lines use it).
   --ref-venv <dir>      Default $HOME/exp35-ref-venv (container disk).
   --dry-run             Print every step, URL and SHA-256. Download nothing, install
                         nothing, write nothing. Files already present are hashed.
   -h, --help            Show this help.
 
-Environment: EXP35_DATA_DIR (default ~/Development/DATA/omrs), SWEEP_GGUF_DIR (default
+Environment: WORK (required: the container-disk work folder, for example
+/root/exp35-work; /workspace is network storage on many hosts), EXP35_DATA_DIR (default ~/Development/DATA/omrs), SWEEP_GGUF_DIR (default
 <data>/benchmarks/gguf), HF_TOKEN (optional; never printed).
 EOF
 }
 
 COMMIT="" INPUTS="" DRY_RUN=0 TGZ="" TGZ_SHA=""
-PASSAGES="/workspace/passages" RAGAS_VENV="/workspace/ragas-venv" REF_VENV="$HOME/exp35-ref-venv"
+WORK="${WORK:-}" PASSAGES="" RAGAS_VENV="" REF_VENV="$HOME/exp35-ref-venv"
 while [ $# -gt 0 ]; do
   case "$1" in
     --commit|--inputs|--passages-dir|--ragas-venv|--ref-venv)
@@ -73,6 +75,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+[ -n "$PASSAGES" ] || PASSAGES="${WORK:-/WORK-is-not-set}/passages"
+[ -n "$RAGAS_VENV" ] || RAGAS_VENV="${WORK:-/WORK-is-not-set}/ragas-venv"
 PROBLEMS=0
 say() { printf '%s\n' "$*"; }
 step() { printf '\n== Step %s: %s\n' "$1" "$2"; }
@@ -298,9 +302,12 @@ say "  HEAD $HEAD_SHA, expected $COMMIT"
 
 # --- Step 2: GPU and host CUDA ---
 step 2 "check the GPU, the host CUDA version and the work disk"
-if [ "$DRY_RUN" -eq 1 ]; then
+if [ -z "$WORK" ]; then
+  problem "WORK is not set. Set it to the container-disk work folder (for example /root/exp35-work). This script never uses /workspace as a default."
+elif [ "$DRY_RUN" -eq 1 ]; then
   say "  [dry-run] would run: nvidia-smi --query-gpu=name,memory.total --format=csv,noheader"
   say "  [dry-run] would read the CUDA version from the nvidia-smi header (13.0 or newer)"
+  say "  [dry-run] would check that $WORK is on a local disk (findmnt)"
   say "  [dry-run] would check that $(dirname "$PASSAGES") is on a local disk (findmnt)"
 else
   GPUS="$(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader)" || die "nvidia-smi failed."
@@ -308,11 +315,12 @@ else
   gpu_is_single_4090 "$GPUS" || die "nvidia-smi lists: $GPUS. Experiment 35 runs on exactly one RTX 4090. Delete this pod."
   cuda_at_least "$CUDA" || die "host CUDA is ${CUDA:-unknown}; the pinned llama.cpp CUDA build needs 13.0 or newer. Delete this pod."
   say "  GPU $GPUS, host CUDA $CUDA"
-  WORK_DIR="$(dirname "$PASSAGES")"
-  mkdir -p "$WORK_DIR"
-  FSTYPE="$(findmnt -n -o FSTYPE -T "$WORK_DIR" 2>/dev/null || true)"
-  disk_is_local "$FSTYPE" || die "$WORK_DIR is on file system '${FSTYPE:-unknown}', not a local disk. Delete this pod and create one without a network volume."
-  say "  work disk $WORK_DIR: $FSTYPE"
+  for WORK_DIR in "$WORK" "$(dirname "$PASSAGES")"; do
+    mkdir -p "$WORK_DIR"
+    FSTYPE="$(findmnt -n -o FSTYPE -T "$WORK_DIR" 2>/dev/null || true)"
+    disk_is_local "$FSTYPE" || die "$WORK_DIR is on file system '${FSTYPE:-unknown}', not a local disk. Delete this pod and create one whose container disk is local."
+    say "  work disk $WORK_DIR: $FSTYPE"
+  done
 fi
 
 # --- Step 3: uv and the locked environment ---

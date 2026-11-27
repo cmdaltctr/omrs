@@ -1,7 +1,7 @@
 """Checks on mac_watch35.py, the Mac side of the test pod session (task 9.2).
 
 Stub ``ssh``, ``scp`` and ``tmux`` come first on ``PATH``. The ssh stub runs the
-remote command on this machine with ``/workspace`` moved into the test folder. The
+remote command on this machine with ``/root/exp35-work`` moved into the test folder. The
 tmux stub plays the chain: each ``has-session`` call moves it one step through a
 scenario, and once the scenario is used up it stops the "pod" after ``PULLED``.
 ``MAC_WATCH35_FAKE_CLOCK=1`` makes every wait virtual, so the 30-minute idle rule runs
@@ -66,7 +66,7 @@ n=$(( $(cat "$T/ssh.count" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$T/ssh.co
 [ "$n" -le "${STUB_SSH_DOWN:-0}" ] && exit 255
 [ -e "$T/ssh.dead" ] && exit 255
 export WATCHER_PID="$PPID"
-exec bash -c "${cmd//\/workspace/$T/pod/workspace}"
+exec bash -c "${cmd//\/root\/exp35-work/$T/pod/root/exp35-work}"
 """
 _SCP = r"""#!/usr/bin/env bash
 T="@T@"
@@ -89,10 +89,11 @@ i=0
 while [ "$i" -lt $((n - 1)) ]; do cp "$(map "${args[$i]}")" "$dst" || exit 1; i=$((i + 1)); done
 """
 _TMUX = r"""#!/usr/bin/env bash
-T="@T@"; P="$T/pod"; W="$P/workspace"; LOG="$W/test-session.log"
+T="@T@"; P="$T/pod"; W="$P/root/exp35-work"; LOG="$W/test-session.log"
 printf '%s\n' "$*" >> "$T/tmux.log"
 case "$1" in
-  kill-session) echo kill >> "$T/order.log"; [ -e "$T/tmux.kill-fails" ] && exit 1; exit 0 ;;
+  kill-session) echo kill >> "$T/order.log"; [ -e "$T/tmux.kill-fails" ] && exit 1
+    [ -d "$T/stage.on-kill" ] && cp -R "$T/stage.on-kill" "$W/stage-out"; exit 0 ;;
   new-session) for a in "$@"; do last="$a"; done
     printf '%s\n' "$last" > "$P/tmux-cmd"; : > "$LOG"; touch "$P/alive"; exit 0 ;;
   has-session) [ -e "$P/alive" ] || exit 1 ;;
@@ -114,6 +115,7 @@ case "$step" in
   ssh-off) touch "$T/ssh.dead" ;;
   '') if [ -e "$W/PULLED" ]; then
         if [ -e "$P/stop-fails" ]; then echo "[00:10:00] POD_STOP_FAILED: no stop worked" >> "$LOG"
+        elif [ -e "$P/keeps" ]; then echo "[00:10:00] POD_KEPT: stage failed; fix it" >> "$LOG"
         else echo "[00:10:00] pod stop sent with: runpodctl pod stop" >> "$LOG"; fi
         rm -f "$P/alive"
       fi ;;
@@ -129,6 +131,7 @@ class Session:
         self.tmp = tmp
         self.root = tmp / "data"
         self.pod = tmp / "pod"
+        self.work = self.pod / "root/exp35-work"  # the pod's /root/exp35-work
         self.home = tmp / "home"
         self.home.mkdir()
         self.zai = self.home / ".config/omrs/secrets/zai-exp35.base_url"
@@ -147,7 +150,7 @@ class Session:
         self._write(self.root / FB / "PDFS_MANIFEST.json", json.dumps({"files": files}))
         for rel in DECOYS:
             self._write(self.root / rel, "OPENROUTER_API_KEY=sk-or-DECOY_SECRET_77\n")
-        self._write(self.pod / "workspace/exp35-test/out/answer-summary.json", "{}\n")
+        self._write(self.work / "exp35-test/out/answer-summary.json", "{}\n")
         self._write(self.pod / "steps", "".join(f"{s}\n" for s in steps or []))
         self.url, self.commit = self._origin()
         bin_dir = tmp / "bin"
@@ -226,27 +229,24 @@ def test_a_done_session_is_pulled_checked_marked_and_ends_with_the_delete_line(
     assert result.returncode == 0, output
     assert _last(result) == f"DELETE_POD_NOW {POD}"
     folder = s.folder()
-    assert _sha(folder / "test-session-out.tgz") == _sha(s.pod / "workspace/test-session-out.tgz")
+    assert _sha(folder / "test-session-out.tgz") == _sha(s.work / "test-session-out.tgz")
     assert "TEST_SESSION_DONE" in (folder / "test-session.log").read_text(encoding="utf-8")
-    assert (s.pod / "workspace/PULLED").read_text(encoding="utf-8").strip() == "ok"
+    assert (s.work / "PULLED").read_text(encoding="utf-8").strip() == "ok"
     assert "end=done outputs=ok pulled-marker=written pod-stop=sent" in result.stdout
-    inputs = s.pod / "workspace/inputs"
+    inputs = s.work / "inputs"
     assert sorted(p.name for p in inputs.iterdir()) == [
         "classify-examples.json",
         "exp35-inputs.tgz",
         "exp35-inputs.tgz.sha256",
     ]
     assert (inputs / "classify-examples.json").read_bytes() == s.examples.read_bytes()
-    session_env = (s.pod / "workspace/session.env").read_text(encoding="utf-8")
-    stages = (
-        f"{s.pod}/workspace/omrs/experiments/{HERE.parent.name}/prefreeze/test_session_stages.txt"
-    )
+    session_env = (s.work / "session.env").read_text(encoding="utf-8")
+    stages = f"{s.work}/omrs/experiments/{HERE.parent.name}/prefreeze/test_session_stages.txt"
     assert session_env == f"COMMIT={s.commit}\nSTOP_GRACE_MIN=120\nSTAGES_FILE={stages}\n"
-    clone = s.pod / "workspace/omrs"
+    clone = s.work / "omrs"
     head = subprocess.run(["git", "-C", str(clone), "rev-parse", "HEAD"], capture_output=True)
     assert head.stdout.decode().strip() == s.commit
-    workspace = str(s.pod / "workspace")
-    launch = mac_watch35.LAUNCH.replace("/workspace", workspace)
+    launch = mac_watch35.LAUNCH.replace(mac_watch35.WORK, str(s.work))
     assert (s.pod / "tmux-cmd").read_text(encoding="utf-8").strip() == launch
     assert KEY_BODY not in output
 
@@ -274,10 +274,10 @@ def test_each_early_end_packs_and_pulls_the_outputs_marks_and_prints_delete(
     assert f"RESULT end={end} outputs=ok pulled-marker=written" in result.stdout
     folder = s.folder()
     assert (folder / "test-session.log").is_file()
-    assert _sha(folder / "watcher-out.tgz") == _sha(s.pod / "workspace/watcher-out.tgz")
+    assert _sha(folder / "watcher-out.tgz") == _sha(s.work / "watcher-out.tgz")
     with tarfile.open(folder / "watcher-out.tgz") as tar:
         assert "out/answer-summary.json" in tar.getnames()
-    assert (s.pod / "workspace/PULLED").read_text(encoding="utf-8").strip() == "ok"
+    assert (s.work / "PULLED").read_text(encoding="utf-8").strip() == "ok"
 
 
 def test_a_second_signal_during_the_end_steps_does_not_stop_the_pull(tmp_path: Path) -> None:
@@ -341,7 +341,7 @@ def test_lost_ssh_ends_the_watch_and_still_prints_delete(tmp_path: Path) -> None
     result = s.run()
     assert result.returncode == 10
     assert "RESULT end=ssh-lost outputs=pull-failed pulled-marker=not-written" in result.stdout
-    assert not (s.pod / "workspace/PULLED").exists()
+    assert not (s.work / "PULLED").exists()
     assert _last(result) == f"DELETE_POD_NOW {POD}"
 
 
@@ -351,7 +351,7 @@ def test_a_hash_mismatch_on_pull_is_loud_and_still_prints_delete(tmp_path: Path)
     assert result.returncode == 11
     assert "HASH_MISMATCH" in result.stdout
     assert "end=done outputs=hash-mismatch" in result.stdout
-    assert (s.pod / "workspace/PULLED").read_text(encoding="utf-8").strip() == "hash-mismatch"
+    assert (s.work / "PULLED").read_text(encoding="utf-8").strip() == "hash-mismatch"
     pulls = [line for line in s.log("scp.log") if "test-session-out.tgz.sha256" in line]
     assert len(pulls) == 1  # ssh checks bytes in transit; a second copy cannot fix it
     assert (s.folder() / "test-session-out.tgz").is_file()
@@ -383,7 +383,7 @@ def test_the_inputs_tarball_holds_only_the_setup_paths_and_no_secret(tmp_path: P
     assert not [n for n in names if any(p.startswith(hidden) for p in Path(n).parts)]
     record = (tgz.parent / "exp35-inputs.tgz.sha256").read_text(encoding="utf-8")
     assert record == f"{_sha(tgz)}  exp35-inputs.tgz\n"
-    assert _sha(s.pod / "workspace/inputs/exp35-inputs.tgz") == _sha(tgz)
+    assert _sha(s.work / "inputs/exp35-inputs.tgz") == _sha(tgz)
 
 
 def test_a_first_signal_during_the_pull_does_not_stop_the_pull(tmp_path: Path) -> None:
@@ -485,12 +485,15 @@ def test_the_watcher_matches_the_chain_launch_and_setup_contract() -> None:
     assert 'log "pod stop sent with: $how"' in chain
     assert mac_watch35.STOP not in "[00:00:00] == chain STOPPED: setup is marked with ! and failed"
     assert 'TARBALL="$WORK/test-session-out.tgz"' in chain and 'PULLED="$WORK/PULLED"' in chain
-    assert mac_watch35.TARBALL == "/workspace/test-session-out.tgz"
-    header = mac_watch35.LAUNCH.replace("/workspace/omrs", "<repo>")
-    assert f"tmux new-session -d -s exp35 '{header}'" in launch
-    assert 'SESSION_ENV="${SESSION_ENV:-/workspace/session.env}"' in launch
+    assert mac_watch35.TARBALL == "/root/exp35-work/test-session-out.tgz"
+    header = mac_watch35.LAUNCH.replace(mac_watch35.REMOTE_REPO, "<repo>")
+    plain = header.removeprefix(
+        f"WORK={mac_watch35.WORK} "
+    )  # the comment may omit the WORK= prefix
+    assert any(f"tmux new-session -d -s exp35 '{h}'" in launch for h in (header, plain))
+    assert "$WORK/session.env" in launch and "/workspace/session.env" not in launch
     assert 'OUT_DIR="${OUT_DIR:-$WORK/exp35-test/out}"' in launch
     assert f'INPUTS_TGZ="{mac_watch35.INPUTS_TGZ}"' in setup
-    assert f"--inputs {mac_watch35.INPUTS} " in stages
-    assert f"{mac_watch35.INPUTS}/{mac_watch35.EXAMPLES}" in stages
+    inputs = mac_watch35.INPUTS.replace(mac_watch35.WORK, "$WORK")  # a stages file expands WORK
+    assert f"--inputs {inputs} " in stages and f"{inputs}/{mac_watch35.EXAMPLES}" in stages
     assert '--commit "$COMMIT"' in stages

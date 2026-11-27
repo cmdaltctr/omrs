@@ -31,7 +31,7 @@ This runbook is for the operator's agent. The agent creates and deletes the pod 
 2. Do the create within 10 minutes of that read. If the price changed, quote again and wait for the go.
 3. Run `uv run --no-sync python prefreeze/create_pod35.py`. Keep the JSON it prints.
 4. Call `create-pod` once with that JSON, unchanged. Write down the pod id.
-5. Read the pod back with `get-pod`. Compare the image digest, GPU, `/workspace` volume and port `22/tcp` with the JSON.
+5. Read the pod back with `get-pod`. Compare the image digest, GPU, 120 GB container disk, `/workspace` volume (the spare copy) and port `22/tcp` with the JSON.
 6. If a value differs, delete the pod at once. Do not start the watcher.
 7. Start the watcher as a background task at once. `caffeinate -i` keeps the Mac awake:
 
@@ -49,16 +49,19 @@ This runbook is for the operator's agent. The agent creates and deletes the pod 
     The first output line names the results folder. Do not use `pgrep` or `pkill`: they also match the `caffeinate` and `uv` parents.
     The watcher then pulls the outputs and prints `DELETE_POD_NOW`. It ignores a second signal, so the pull finishes.
 13. Wait for the watcher to exit. Its last line is `DELETE_POD_NOW <id>`.
-14. Delete the pod with `delete-pod` and that id. Do this for every exit code.
-15. If the watcher process ended without the `DELETE_POD_NOW` line, delete the pod all the same.
+14. Delete the pod with `delete-pod` and that id. Do this for every exit code except 14.
+    Exit 14 ends with `KEEP_POD <id>`: the pod stays up for a fix. Follow "Resume after a failure".
+15. If the watcher process ended without the `DELETE_POD_NOW` or `KEEP_POD` line, delete the pod all the same.
 16. Read `list-pods`. Confirm that the pod is gone. If it is not gone, delete it again and read again.
+    Skip this step after exit 14: the pod stays up on purpose for "Resume after a failure".
 17. Remove nothing else: no other pod, volume, template, secret or SSH key.
 18. Read `list-pod-billing` for the real cost of the session.
 19. Report the exit code, the `RESULT` line, the results folder and the cost.
 
 ## Exit codes
 
-Every code ends with `DELETE_POD_NOW <id>`. Delete the pod for every code.
+Every code except 14 ends with `DELETE_POD_NOW <id>`. Delete the pod for those codes.
+Code 14 ends with `KEEP_POD <id>`. Keep the pod, fix the cause, then resume.
 
 | Code | Meaning | Extra action |
 | ---: | --- | --- |
@@ -76,8 +79,20 @@ Every code ends with `DELETE_POD_NOW <id>`. Delete the pod for every code.
 | 11 | The pull failed, or the SHA-256 differs | Keep the files as they are. Report it. |
 | 12 | Stopped by a signal (SIGTERM, SIGINT or SIGHUP) | Report why you stopped it. |
 | 13 | No public IP for `22/tcp` within 15 minutes (step 2b) | Report it. Nothing was copied. |
+| 14 | The chain logged `POD_KEPT:` (`--keep-pod-on-fail`, a stage failed or a signal stopped the chain) | Keep the pod. Follow "Resume after a failure". Delete the pod yourself when you stop. |
 
 After codes 8, 9 and 12 the watcher first sends `tmux kill-session -t exp35` to the pod. The chain then stops its stage and writes the tarball. The watcher waits up to 3 minutes for the tarball, then pulls. If the stop fails or times out, the watcher pulls anyway.
+
+## Where the work lives
+
+- All work runs on the container disk in `/root/exp35-work`. The container disk is local on every host.
+- The folder holds `inputs/`, `passages/`, `ragas-venv/`, `omrs/` (the checkout), `session.env`, `test-session.log` and the outputs in `exp35-test/out`.
+- The `/workspace` volume is network storage on some hosts. The setup stage refuses it as a work folder.
+- After each stage ends `ok`, the chain packs the new files of that stage into `/root/exp35-work/stage-out/<NN>-<stage>.tgz`. `NN` is the stage number in the stages file, counted from 1.
+- The chain writes the `.sha256` file last. The watcher pulls a tarball only when it sees the `.sha256` file.
+- The watcher pulls each stage tarball to the Mac as the stage ends. It checks the SHA-256 on the Mac.
+- Setup stages (marked `!`) and background launchers such as `gpulog` get no tarball. They run again on every resume.
+- The chain copies each tarball to the spare folder `/workspace/exp35-stage-out`. The spare copy is optional. A failed copy does not stop the chain.
 
 ## Where the results go
 
@@ -85,16 +100,17 @@ After codes 8, 9 and 12 the watcher first sends `tmux kill-session -t exp35` to 
 - The folder name comes from the stages file: `verify_session_stages.txt` gives `verify-session-<UTC date>/`.
 - The folder holds `inputs/`, `watcher.pid`, `test-session.log`, `watch-summary.txt` and the outputs tarball with its `.sha256`.
 - `inputs/` holds the inputs tarball, its `.sha256`, the examples and the `--extra-input` file, exactly as sent to the pod.
-- The outputs tarball is `test-session-out.tgz` from the chain. If the chain wrote none, it is `watcher-out.tgz`, packed from `/workspace/exp35-test/out`.
+- The outputs tarball is `test-session-out.tgz` from the chain. If the chain wrote none, it is `watcher-out.tgz`, packed from `/root/exp35-work/exp35-test/out`.
 - Record the copy and its SHA-256 in `DATA/omrs/DATA_LOCATIONS.md`.
-- The outputs tarball holds no index store (`stores/` folders). The stores stay on the pod volume and go when you delete the pod. Every JSON, JSONL, log and summary file, `environment.json` and the seal records are in the tarball.
+- The outputs tarball holds no index store (`stores/` folders). Every JSON, JSONL, log and summary file, `environment.json` and the seal records are in the tarball.
+- The stage tarballs are in `stage-out/` of the results folder. Each one holds the files of its stage, with the index stores.
 - The watcher writes `STOP_GRACE_MIN=120` into `session.env`. The chain then waits up to 120 minutes for `PULLED` before it stops the pod. The watcher's pull takes at most 110 minutes (copy time limits of 10 min for the log and 45 min for each of two tarball tries), so a slow copy ends before the stop. A Mac that stops answering costs at most 2 h of GPU time.
 
 ## Fix check variant
 
 The fix check session checks the four fixes of 2026-11-24 on a short second pod. It uses the same machinery: `pod_setup35.sh`, `launch35.sh`, the `pod_test_session.sh` chain and `mac_watch35.py`. The chain stops the pod only after the last check ends and the Mac has pulled the outputs.
 
-- The stages are in `prefreeze/verify_session_stages.txt`. The watcher writes `STAGES_FILE` into `/workspace/session.env`, and `launch35.sh` reads it.
+- The stages are in `prefreeze/verify_session_stages.txt`. The watcher writes `STAGES_FILE` into `/root/exp35-work/session.env`, and `launch35.sh` reads it.
 - Every stage runs at `COMMIT`. No stage checks out another commit.
 - Section 4 needs the FinanceBench answers of the 2026-11-24 session. The watcher sends them as `--extra-input`.
 
@@ -123,7 +139,7 @@ The fix check session checks the four fixes of 2026-11-24 on a short second pod.
    ```
 
 4. Make sure the dry run exits 0, lists 91 input files, and shows `fb-answers.tgz` in the SHA-256 check.
-5. Make sure the dry run shows `STAGES_FILE=/workspace/omrs/.../verify_session_stages.txt` and the folder `verify-session-<UTC date>`.
+5. Make sure the dry run shows `STAGES_FILE=/root/exp35-work/omrs/.../verify_session_stages.txt` and the folder `verify-session-<UTC date>`.
 
 ### Session
 
@@ -186,7 +202,7 @@ The session also runs the classifier re-gate (task 8.7, owner decision 2026-11-2
    ```
 
 4. Make sure the dry run exits 0, shows no `PROBLEM:` line and shows the `step 2b: GET` line.
-5. Make sure the dry run shows `STAGES_FILE=/workspace/omrs/.../p2_session_stages.txt` and the folder `p2-session-<UTC date>`.
+5. Make sure the dry run shows `STAGES_FILE=/root/exp35-work/omrs/.../p2_session_stages.txt` and the folder `p2-session-<UTC date>`.
 6. Make sure the dry run names `sample.json` among the inputs it sends.
 
 ### Session
@@ -228,7 +244,7 @@ The freeze check runs the final code on the RTX 4090 once before the freeze (rea
 ### Before the go
 
 1. Do steps 1 to 3 of "Before the go" above. `COMMIT` is the freeze candidate. The examples file is the committed `classify-examples.json`.
-2. Make sure the GLM-5.3 base URL file `~/.config/omrs/secrets/zai-exp35.base_url` exists, mode 600, one line (amendment A15). The watcher checks its SHA-256 against `plan.json` and sends it to the pod's mode-600 `/workspace/.zai_env` over ssh standard input. It never prints the value.
+2. Make sure the GLM-5.3 base URL file `~/.config/omrs/secrets/zai-exp35.base_url` exists, mode 600, one line (amendment A15). The watcher checks its SHA-256 against `plan.json` and sends it to the pod's mode-600 `/root/exp35-work/.zai_env` over ssh standard input. It never prints the value.
 3. Make the recheck input (Mac only, reads the owner's gate-2 labels):
 
 ```bash
@@ -245,8 +261,8 @@ uv run --no-sync python prefreeze/mac_watch35.py --pod-id DRYRUN --commit "$COMM
   --extra-input "$D/freeze-check-inputs/kinds-recheck-input.json" --dry-run
 ```
 
-5. Make sure the dry run exits 0, shows no `PROBLEM:` line, lists 91 input files and shows the `/workspace/.zai_env` step with no value.
-6. Make sure the dry run shows `STAGES_FILE=/workspace/omrs/.../freeze_check_stages.txt` and the folder `freeze-check-<UTC date>`.
+5. Make sure the dry run exits 0, shows no `PROBLEM:` line, lists 91 input files and shows the `/root/exp35-work/.zai_env` step with no value.
+6. Make sure the dry run shows `STAGES_FILE=/root/exp35-work/omrs/.../freeze_check_stages.txt` and the folder `freeze-check-<UTC date>`.
 
 ### Session
 
@@ -320,3 +336,25 @@ Fix forward. Do not re-run the whole check.
 5. Otherwise, copy `freeze_check_stages.txt` to `freeze_rerun_stages.txt`. Keep `setup`, `context`, `gpulog`, the failed stages, the stages they read from, and their `check-*` stages. Delete the other lines. For example, a failed `ragas-fs` needs `s-fs`, `search-fs` and `answer-fs` again, because the pod starts empty.
 6. Add the new file to `FILES` in `prefreeze/test_session_stages.py`, and run the prefreeze tests.
 7. Dry-run it as in "Before the go", with `--stages freeze_rerun_stages.txt`. Then run it on a new pod.
+8. To fix on the same pod and keep the finished stages, use "Resume after a failure" below.
+
+### Resume after a failure
+
+Use this when a stage failed, the cause is fixable, and the pod must keep its finished stages.
+
+1. Start the first launch with `--keep-pod-on-fail`. The watcher writes `KEEP_POD_ON_FAIL=1` into `session.env`.
+2. Wait for the `POD_KEPT:` line in the chain log. The chain stops without stopping the pod.
+3. Check that the watcher pulled every stage tarball of the finished stages. Look for `stage tarball <tag>.tgz pulled` lines.
+4. Fix the cause on the Mac. Write a test that fails first, then make it pass.
+5. Commit and push the fix. Use the new commit as `COMMIT`.
+   A skipped stage keeps its old result. Make sure the fix does not change the result of a skipped stage.
+6. Start the watcher again with the same `--pod-id` and `--stages`. Add `--resume` and the new `--commit`.
+7. The watcher writes `RESUME=1` into `session.env`. It moves the old `test-session.log` aside as `.attempt<k>`.
+8. The chain runs the `!` stages and the background launchers again. It skips each stage that has a matching tarball.
+9. Read `== <stage>: SKIPPED (resume, done in <tag>.tgz)` for each skipped stage.
+   Read the `resumed:` names in the `finish` line at the end.
+10. If a tarball hash does not match, the chain logs `tarball hash mismatch` and runs the stage again.
+11. If the pod was deleted, its spare copy is gone. Start a new pod and a fresh run.
+12. A fresh launch refuses to start when `stage-out/` holds tarballs. Move the folder aside, or use `--resume`.
+13. Delete the pod yourself when the run is done or you give up. The watcher never deletes a pod.
+14. The layout test `freeze_layout_stages.txt` proves this procedure. It stops once on purpose at `resume-probe` and resumes. About 45 min and $0.70.

@@ -80,10 +80,14 @@ def _run(
     *,
     make_out: bool = True,
     stub_sleep: bool = False,
-    **env: str,
+    **env: str | None,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
+    """Run the chain once. A second call in the same folder is a relaunch (the stubs stay).
+
+    An ``env`` value of ``None`` removes the variable (for example ``WORK``).
+    """
     bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
+    bin_dir.mkdir(exist_ok=True)
     for name, body in (("runpodctl", _RUNPODCTL), ("curl", _CURL), ("run_arms.py", _RUNNER)):
         _stub(bin_dir, name, body, tmp_path)
     add_timeout_if_missing(bin_dir)
@@ -94,7 +98,7 @@ def _run(
     stage_file = tmp_path / "stages.txt"
     stage_file.write_text(stages, encoding="utf-8")
     out = tmp_path / "smoke-out"
-    if make_out:
+    if make_out and not out.exists():
         out.mkdir()
         (out / "answer-summary.json").write_text("{}\n", encoding="utf-8")
     full_env = {
@@ -108,6 +112,7 @@ def _run(
         **HOSTED,
         **env,
     }
+    full_env = {key: value for key, value in full_env.items() if value is not None}
     result = subprocess.run(
         ["bash", str(PATH_SCRIPT)], env=full_env, capture_output=True, text=True, timeout=60
     )

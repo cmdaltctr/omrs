@@ -5,17 +5,29 @@
 # Start it inside the pod under tmux (or nohup), so a closed terminal does not end it.
 # The Mac starts it through launch35.sh, which first copies the pod's create-time
 # values from process 1 (gap G7):
-#   tmux new-session -d -s exp35 'bash <repo>/experiments/35-full-rag-benchmark-2026-11-01/prefreeze/launch35.sh > /workspace/test-session.log 2>&1'
+#   tmux new-session -d -s exp35 'bash <repo>/experiments/35-full-rag-benchmark-2026-11-01/prefreeze/launch35.sh > /root/exp35-work/test-session.log 2>&1'
 #
-# It runs each stage of STAGES_FILE in order, from the Experiment 35 folder. On every
+# All work stays on the container disk, in $WORK (/root/exp35-work). /workspace is
+# network storage on many hosts, so it is not the work folder. A stop clears the container
+# disk, so each finished stage is packed and the Mac pulls it (see stage_pack35.sh); the
+# volume at /workspace keeps only a spare copy of the stage tarballs (SPARE_DIR).
+#
+# It runs each stage of STAGES_FILE in order, from the Experiment 35 folder. After a
+# stage ends ok (not a "!" stage, not a stage that starts a background process) it packs
+# the files the stage wrote into $WORK/stage-out/<NN>-<name>.tgz, then the .sha256 file
+# (NN is the stage number: stage lines only, not value lines). Files a background
+# launcher wrote (gpu.csv) are listed in $WORK/background.files and left out of every
+# stage tarball, because they keep changing. On every
 # exit (the end, a failure, a TERM, HUP or INT signal) the `finish` trap runs once: it
 # stops the background processes of the stages, writes the outputs to
-# $WORK/test-session-out.tgz with its SHA-256 (without the index stores: every stores/
-# folder stays on the volume, so the copy to the Mac is small; P2, 2026-11-24), waits up
+# $WORK/test-session-out.tgz with its SHA-256 (without the index stores: they are in the
+# stage tarballs, so the copy to the Mac is small; P2, 2026-11-24), waits up
 # to STOP_GRACE_MIN minutes for
 # the Mac's $WORK/PULLED marker, then stops this pod, so billing for the GPU ends.
-# Create the pod with a volume disk at /workspace: a stop clears the container disk,
-# the volume keeps the tarball (G10).
+# KEEP_POD_ON_FAIL=1 keeps the pod instead after a failed stage or a signal, and logs
+# POD_KEPT. RESUME=1 (a relaunch on the same pod) skips each stage whose tarball matches
+# its hash, restoring it from SPARE_DIR when only the spare has it. A fresh launch
+# (RESUME unset) refuses when $WORK/stage-out already holds a tarball (G10).
 #
 # STAGES_FILE holds one item per line; blank lines and lines that start with # are
 # skipped. All lines are checked before the first stage runs.
@@ -35,7 +47,9 @@
 # values RUNPOD_POD_ID and RUNPOD_API_KEY, the hosted keys OPENROUTER_API_KEY and
 # OMRS_EXP35_ZAI_KEY, the GLM-5.3 base URL OMRS_EXP35_ZAI_BASE_URL (from launch35.sh)
 # and the image pin EXP35_POD_IMAGE. No value is printed.
-# Optional: WORK (default /workspace), SESSION_CAP (default 15h), STOP_GRACE_MIN
+# WORK is required, with no default: the chain refuses when it is unset, and never falls
+# back to /workspace. Optional: SPARE_DIR (default empty: no spare copy), RESUME=1,
+# KEEP_POD_ON_FAIL=1, SESSION_CAP (default 15h), STOP_GRACE_MIN
 # (default 0), PULL_POLL_S (default 10), DRY_RUN=1 (print every command, run none).
 # Exit codes: 0 every stage ok or skipped; 1 a stage failed, timed out or did not
 # start in time; 2 refused before the first stage; 3 the pod stop failed.
@@ -43,7 +57,13 @@ set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EXP35="$(cd "$HERE/.." && pwd)"
-WORK="${WORK:-/workspace}"
+WORK="${WORK:-}"
+SPARE_DIR="${SPARE_DIR:-}"
+RESUME="${RESUME:-0}"
+KEEP_POD_ON_FAIL="${KEEP_POD_ON_FAIL:-0}"
+STAGE_OUT="$WORK/stage-out"
+STAGE_MARK="$WORK/.stage-start"
+BG_FILES="$WORK/background.files"
 TARBALL="$WORK/test-session-out.tgz"
 PULLED="$WORK/PULLED"
 BACKGROUND_PIDS="$WORK/background.pids"
@@ -55,6 +75,10 @@ REST_V2="https://api.runpod.io/v2"
 REST_V1="https://rest.runpod.io/v1"
 FAILED=()
 SKIPPED=()
+RESUMED=()
+STAGE_N=0
+SIGNALLED=0
+KEPT=0
 FINISHED=0
 STOP_OK=0
 DEADLINE=0
@@ -63,6 +87,9 @@ FATAL=0
 LIMIT=0
 CMD=""
 STAGE_PGID=""
+
+# shellcheck source=stage_pack35.sh
+. "$HERE/stage_pack35.sh"
 
 log() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 run() { if [ "$DRY_RUN" = 1 ]; then log "  [dry-run] $*"; else "$@"; fi; }
@@ -200,7 +227,12 @@ attempt() {
 
 # run_stage: run the parsed stage; status 1 when a "!" stage failed (stop the chain).
 run_stage() {
-  local limit rc again=""
+  local limit rc again="" tag bg
+  tag="$(printf '%02d-%s' "$STAGE_N" "$NAME")"
+  if [ "$RESUME" = 1 ] && [ "$FATAL" = 0 ] && [ "$DRY_RUN" != 1 ] && resume_skip "$tag"; then
+    RESUMED+=("$NAME")
+    return 0
+  fi
   limit="$(time_left)"
   if [ "$limit" -le 0 ]; then
     log "== $NAME: SKIPPED, the session cap ($SESSION_CAP) is used up"
@@ -210,8 +242,11 @@ run_stage() {
   log "== $NAME: start (timeout ${limit}s)"
   if [ "$DRY_RUN" = 1 ]; then
     log "  [dry-run] $CMD"
+    [ "$FATAL" = 1 ] || pack_dry_run "$tag"
     return 0
   fi
+  touch "$STAGE_MARK"
+  bg="$(bg_lines)"
   attempt "$CMD" "$limit"
   rc=$?
   if one_runner_call "$CMD"; then
@@ -235,6 +270,9 @@ run_stage() {
     124) log "== $NAME: FAILED, stopped at its timeout (${limit}s)" && FAILED+=("$NAME:timeout") ;;
     *) log "== $NAME: FAILED (exit $rc)" && FAILED+=("$NAME") ;;
   esac
+  # A "!" stage and a background launcher run again on every resume: no tarball for them.
+  if [ "$(bg_lines)" != "$bg" ]; then record_background_files
+  elif [ "$rc" = 0 ] && [ "$FATAL" = 0 ]; then pack_stage "$tag"; fi
   if [ "$FATAL" = 1 ] && [ "$rc" != 0 ] && [ "$rc" != 77 ]; then
     log "== chain STOPPED: $NAME is marked with ! and failed"
     return 1
@@ -250,6 +288,7 @@ run_stages() {
       continue
     fi
     parse_stage "$line"
+    STAGE_N=$((STAGE_N + 1))
     run_stage || break
   done 3<"$STAGES_FILE"
 }
@@ -280,7 +319,7 @@ wait_for_pull() {
   if [ -e "$PULLED" ]; then
     log "PULLED seen: the Mac has the tarball"
   else
-    log "no $PULLED after $STOP_GRACE_MIN min: stopping anyway (the volume keeps the tarball)"
+    log "no $PULLED after $STOP_GRACE_MIN min: going on (the Mac holds the stage tarballs it pulled)"
   fi
 }
 
@@ -320,9 +359,10 @@ stop_pod() {
 }
 
 finish() {
+  local why
   [ "$FINISHED" = 1 ] && return 0
   FINISHED=1
-  log "== finish: failed stages: ${FAILED[*]:-none}; skipped: ${SKIPPED[*]:-none}"
+  log "== finish: failed stages: ${FAILED[*]:-none}; skipped: ${SKIPPED[*]:-none}; resumed: ${RESUMED[*]:-none}"
   # A signal stopped the session during a stage: its own process group still runs.
   [ -z "$STAGE_PGID" ] || kill -KILL -- "-$STAGE_PGID" 2>/dev/null
   stop_background
@@ -337,25 +377,38 @@ finish() {
   [ "$DRY_RUN" = 1 ] || checksum "$TARBALL" >"$TARBALL.sha256"
   log "TEST_SESSION_DONE: copy $TARBALL (+ .sha256) to the Mac, touch $PULLED, then delete the pod"
   wait_for_pull
+  if [ "$KEEP_POD_ON_FAIL" = 1 ] && { [ "${#FAILED[@]}" -gt 0 ] || [ "$SIGNALLED" = 1 ]; }; then
+    KEPT=1
+    why="stopped by a signal"
+    [ "${#FAILED[@]}" -eq 0 ] || why="failed stages: ${FAILED[*]}"
+    log "POD_KEPT: $why; fix, then relaunch with RESUME=1, or delete the pod from the Mac"
+    return 0
+  fi
   stop_pod
 }
 
 main() {
+  [ -n "$WORK" ] || refuse "WORK is not set. Set it to the container-disk work folder (for example /root/exp35-work). This script never uses /workspace as a default."
   need OUT_DIR STAGES_FILE
   precheck
+  if [ "$RESUME" != 1 ] && compgen -G "$STAGE_OUT/*.tgz" >/dev/null; then
+    refuse "$STAGE_OUT already holds stage tarballs from an earlier run. Relaunch with RESUME=1, or move that folder aside, so a fresh run never mixes with old stages."
+  fi
   export OUT_DIR WORK BACKGROUND_PIDS
   export PYTHONFAULTHANDLER=1 # a stage stopped at its timeout prints its Python stack
   export SESSION_PID=$$
   if [ "$DRY_RUN" != 1 ]; then
-    mkdir -p "$WORK" "$OUT_DIR"
+    mkdir -p "$WORK" "$OUT_DIR" "$STAGE_OUT"
     rm -f "$PULLED" "$BACKGROUND_PIDS"
+    [ "$RESUME" = 1 ] || rm -f "$BG_FILES"
   fi
   trap finish EXIT
-  trap 'exit 143' TERM HUP INT
+  trap 'SIGNALLED=1; exit 143' TERM HUP INT
   log "test pod session: work $WORK, out $OUT_DIR, cap $SESSION_CAP, dry-run $DRY_RUN"
+  [ -n "$SPARE_DIR" ] || log "no spare copy: SPARE_DIR is empty (the container disk and the Mac hold the stage tarballs)"
   run_stages
   finish
-  [ "$STOP_OK" = 1 ] || exit 3
+  [ "$STOP_OK" = 1 ] || [ "$KEPT" = 1 ] || exit 3
   [ "${#FAILED[@]}" -eq 0 ] || exit 1
 }
 

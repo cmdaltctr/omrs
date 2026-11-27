@@ -97,3 +97,83 @@ def test_an_empty_base_url_fails_the_pre_check_by_name_only(tmp_path: Path) -> N
     assert result.returncode == 2
     assert "OMRS_EXP35_ZAI_BASE_URL" in result.stdout
     assert not (tmp_path / "out" / "OPENROUTER_API_KEY").exists()
+
+
+def _dry_launch(
+    tmp_path: Path, session_lines: str = "", **env: str | None
+) -> subprocess.CompletedProcess[str]:
+    """Dry run of the whole chain from launch35.sh: it prints each step and writes nothing."""
+    stages = tmp_path / "stages.txt"
+    stages.write_text("alpha true\n", encoding="utf-8")
+    session_env = tmp_path / "session.env"
+    session_env.write_text(f"STAGES_FILE={stages}\n{session_lines}", encoding="utf-8")
+    base = {
+        "PATH": os.environ["PATH"],
+        "HOME": str(tmp_path),
+        "PROC1_ENVIRON": str(tmp_path / "no-environ"),
+        "SESSION_ENV": str(session_env),
+        "ZAI_ENV": str(tmp_path / ".zai_env"),
+        "DRY_RUN": "1",
+        **env,
+    }
+    full = {key: value for key, value in base.items() if value is not None}
+    return subprocess.run(
+        ["bash", str(LAUNCH)], env=full, capture_output=True, text=True, timeout=60
+    )
+
+
+def test_the_work_folder_defaults_to_the_container_disk(tmp_path: Path) -> None:
+    result = _dry_launch(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "work /root/exp35-work, out /root/exp35-work/exp35-test/out" in result.stdout
+    assert "/workspace/exp35-test" not in result.stdout
+
+
+def test_the_session_and_zai_files_default_to_the_work_folder(tmp_path: Path) -> None:
+    work = tmp_path / "w"
+    work.mkdir()
+    (work / ".zai_env").write_text(f"OMRS_EXP35_ZAI_BASE_URL='{ZAI_URL}'\n", encoding="utf-8")
+    stages = tmp_path / "stages.txt"
+    stages.write_text(STAGE, encoding="utf-8")
+    (work / "session.env").write_text(
+        f"OUT_DIR={tmp_path / 'out'}\nSTAGES_FILE={stages}\n", encoding="utf-8"
+    )
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    add_timeout_if_missing(bin_dir)
+    env = {"PATH": f"{bin_dir}:{os.environ['PATH']}", "HOME": str(tmp_path), "WORK": str(work)}
+    env["PROC1_ENVIRON"] = str(tmp_path / "environ")
+    entries = [f"{k}={v}" for k, v in VALUES.items()]
+    (tmp_path / "environ").write_bytes(b"\0".join(e.encode() for e in entries) + b"\0")
+    for name in ("runpodctl", "curl"):
+        (bin_dir / name).write_text("#!/usr/bin/env bash\nexit 0\n")
+        (bin_dir / name).chmod(0o755)
+    result = subprocess.run(
+        ["bash", str(LAUNCH)], env=env, capture_output=True, text=True, timeout=60
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (tmp_path / "out" / "OMRS_EXP35_ZAI_BASE_URL").read_text().strip() == ZAI_URL
+
+
+@pytest.mark.parametrize(
+    ("mount_cmd", "spare", "expected"),
+    [
+        ("true", None, "/workspace/exp35-stage-out"),
+        ("false", None, None),
+        ("true", "/elsewhere/spare", "/elsewhere/spare"),
+        ("true", "", None),
+    ],
+    ids=["mounted", "not-mounted", "set-wins", "set-empty-wins"],
+)
+def test_the_spare_folder_is_set_only_when_workspace_is_a_mount_point(
+    tmp_path: Path, mount_cmd: str, spare: str | None, expected: str | None
+) -> None:
+    result = _dry_launch(tmp_path, MOUNTPOINT_CMD=mount_cmd, SPARE_DIR=spare)
+    out = result.stdout
+    assert result.returncode == 0, out + result.stderr
+    if expected:
+        assert expected in out
+        assert "no spare copy" not in out
+    else:
+        assert "exp35-stage-out" not in out and "/elsewhere" not in out
+        assert out.count("no spare copy") == 1

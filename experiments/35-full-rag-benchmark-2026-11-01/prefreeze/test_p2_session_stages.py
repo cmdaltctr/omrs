@@ -20,6 +20,7 @@ from test_session_stages import (
     OUT,
     P2_FILE,
     RECHECK,
+    WORK,
     _calls,
     _folder,
     _opts,
@@ -45,7 +46,7 @@ P2_ORDER = [
     "fsfull-e8b-c512",
     "fsfull-seal",
 ]
-LOCAL, PASSAGES = "/root/exp35-local", "/workspace/passages"
+LOCAL, PASSAGES = "/root/exp35-local", f"{WORK}/passages"
 CAP_MIN = 15 * 60  # pod_test_session.sh SESSION_CAP default
 
 
@@ -162,7 +163,7 @@ def test_the_recheck_answers_and_judges_two_questions_in_every_answer_setup_shap
 def test_the_regate_classifies_the_sent_sample_into_its_own_folder() -> None:
     calls = [c for c in _calls(P2_FILE) if c.stage.name == "gate2-classify"]
     assert [c.words[0] for c in calls] == ["mkdir", "cp", "uv"]
-    assert calls[1].words[1:] == ("/workspace/inputs/sample.json", f"{OUT}/gate2/sample.json")
+    assert calls[1].words[1:] == (f"{WORK}/inputs/sample.json", f"{OUT}/gate2/sample.json")
     assert _script(calls[2])[:2] == ("refusals35.py", "classify")
     assert dict(calls[2].env) == {"PYTHONPATH": "../.."}
     opts = _opts(calls[2].words)

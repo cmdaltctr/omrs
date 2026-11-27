@@ -7,13 +7,13 @@
 
 SWEEP_GGUF_DIR=/root/gguf
 
-!setup@60m bash prefreeze/pod_setup35.sh --commit "$COMMIT" --inputs /workspace/inputs --passages-dir /workspace/passages --ragas-venv /workspace/ragas-venv --ref-venv /root/exp35-ref-venv
+!setup@60m bash prefreeze/pod_setup35.sh --commit "$COMMIT" --inputs $WORK/inputs --passages-dir $WORK/passages --ragas-venv $WORK/ragas-venv --ref-venv /root/exp35-ref-venv
 !context@5m uv run --no-sync python context35.py > "$OUT_DIR/context35.json"
 gpulog@1m nohup nvidia-smi --query-gpu=timestamp,memory.used,memory.total,utilization.gpu --format=csv -lms 1000 > "$OUT_DIR/gpu.csv" 2>&1 & echo $! >> "$BACKGROUND_PIDS"
 
-vram8-build@20m uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c1024 --stage ingest --limit 5 --corpus-sample 150 --passages-dir /workspace/passages --out-dir "$OUT_DIR/vram" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c1024 --stage seal --limit 5 --corpus-sample 150 --passages-dir /workspace/passages --out-dir "$OUT_DIR/vram" --prefreeze --local-dir /root/exp35-local
-vram8-search@20m uv run --no-sync python run_arms.py --dataset freshstack --setup e8b-c1024-r8b-hon --stage search --limit 5 --corpus-sample 150 --passages-dir /workspace/passages --index-from "$OUT_DIR/vram" --out-dir "$OUT_DIR/vramq" --prefreeze --local-dir /root/exp35-local
+vram8-build@20m uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c1024 --stage ingest --limit 5 --corpus-sample 150 --passages-dir $WORK/passages --out-dir "$OUT_DIR/vram" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c1024 --stage seal --limit 5 --corpus-sample 150 --passages-dir $WORK/passages --out-dir "$OUT_DIR/vram" --prefreeze --local-dir /root/exp35-local
+vram8-search@20m uv run --no-sync python run_arms.py --dataset freshstack --setup e8b-c1024-r8b-hon --stage search --limit 5 --corpus-sample 150 --passages-dir $WORK/passages --index-from "$OUT_DIR/vram" --out-dir "$OUT_DIR/vramq" --prefreeze --local-dir /root/exp35-local
 
 check-search@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/vramq/freshstack/search/e8b-c1024-r8b-hon/run1/search-summary.json" --count 1 'closed_missing=[]'
 check-tokenizer@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/vram/freshstack/e8b-c1024/index-fingerprint.json" --count 1 tokenizer.sha256=83cdf8c3a34f68862319cb1810ee7b1e2c0a44e0864ae930194ddb76bb7feb8d tokenizer.revision=5cf2132abc99cad020ac570b19d031efec650f2b
-collect@5m mkdir -p "$OUT_DIR/router-logs" && cd /root/exp35-local && find . -name server.log -print0 | tar --null -T - -cf - | tar -xf - -C "$OUT_DIR/router-logs"
+collect@5m mkdir -p "$OUT_DIR/router-logs" && cd /root/exp35-local && find . -name server.log -print0 | tar --null -T - -cf - | tar -xmf - -C "$OUT_DIR/router-logs"

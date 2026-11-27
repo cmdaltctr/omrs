@@ -36,10 +36,10 @@ _PY = f"{sys.version_info.major}.{sys.version_info.minor}"
 RAGAS_INSTALL = (
     f"Ragas {RAGAS_VERSION} is not installed for this Python. It must not go into the "
     "repository environment. On the pod, run:\n"
-    f"  uv venv /workspace/ragas-venv --python {_PY}\n"
-    "  uv pip install --python /workspace/ragas-venv/bin/python "
+    f"  uv venv $WORK/ragas-venv --python {_PY}\n"
+    "  uv pip install --python $WORK/ragas-venv/bin/python "
     f"ragas=={RAGAS_VERSION}\n"
-    "then run this script again with --ragas-venv /workspace/ragas-venv."
+    "then run this script again with --ragas-venv $WORK/ragas-venv."
 )
 
 #: A metric scorer: takes one sample (question, answer, contexts, reference), returns a score.

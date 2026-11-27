@@ -7,8 +7,12 @@ Run it on the Mac from the experiment folder:
 
 The request comes from ``plan.json``: the pod image is ``pins.environment.image``
 (pinned by digest), and the same value goes into ``EXP35_POD_IMAGE``. The pod is
-one RTX 4090 on secure cloud, host CUDA 13.0 or newer, SSH on port 22, and a
-persistent 40 GB volume at ``/workspace`` so the outputs survive a stop (G10).
+one RTX 4090 on secure cloud, host CUDA 13.0 or newer, SSH on port 22, a 120 GB
+container disk and a persistent 40 GB volume at ``/workspace``. All work runs on the
+container disk, which is local on every host (the volume is network storage on some).
+The chain packs each finished stage into a tarball and the Mac pulls it (G10). The
+volume only keeps a spare copy of those tarballs: a stopped pod that is started again
+can restore them for a resume. A pod that is deleted loses the volume with it.
 The keys are RunPod secret references; RunPod fills them in at create time, so
 no key value is ever in the request or the output.
 
@@ -32,9 +36,12 @@ PLAN = Path(__file__).resolve().parent.parent / "plan.json"
 NAME = "omrs-exp35-test-session"
 GPU = {"id": "NVIDIA GeForce RTX 4090", "count": 1, "minCudaVersion": "13.0"}
 CLOUD = "SECURE"
-#: Container disk: GGUF files, reference weights, venvs and caches. Lost on a stop.
+#: Container disk: the work folder (inputs, passages, outputs, stage tarballs), GGUF files,
+#: reference weights, venvs and caches. Lost on a stop; the Mac pulls each finished stage.
 CONTAINER_DISK_GB = 120
-#: Persistent volume: outputs, prepared passages, inputs and the result tarball (G10).
+#: Persistent volume: the optional spare copy of the stage tarballs (index stores included),
+#: kept so that a resume can restore a done stage after a stop. The largest store is the
+#: full FreshStack e8b-c512 index of the P2 session, so 40 GB holds it with margin.
 VOLUME_GB = 40
 VOLUME_PATH = "/workspace"
 PORTS = ["22/tcp"]

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import sys
 from pathlib import Path
 
@@ -143,7 +144,7 @@ def test_ragas_seam_failure_records_type_only() -> None:
 
 
 def test_ragas_venv_without_site_packages_gives_the_install_message(tmp_path: Path) -> None:
-    with pytest.raises(ragas_stage.RagasMissingError, match="uv venv /workspace/ragas-venv"):
+    with pytest.raises(ragas_stage.RagasMissingError, match=re.escape("uv venv $WORK/ragas-venv")):
         ragas_stage.ragas_site(tmp_path)
 
 
