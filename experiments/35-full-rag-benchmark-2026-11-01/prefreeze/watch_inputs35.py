@@ -109,12 +109,27 @@ class Plan:
         return [INPUTS_TGZ, EXAMPLES, *([self.extra.name] if self.extra else [])]
 
 
-def resume_folder(root: Path, exp: str, stem: str) -> Path | None:
-    """Return the newest results folder ``<stem>-<date>`` of an earlier session, or ``None``."""
+def resume_folder(root: Path, exp: str, stem: str, pod_id: str = "") -> Path | None:
+    """Return the results folder of an earlier session of pod *pod_id*, or ``None``.
+
+    The folders are ``<stem>-<date>`` and ``<stem>-<date>-seed<n>`` (a seeded session). The
+    newest folder that recorded this pod id wins. When none did, the newest folder is
+    returned, so the caller names the mismatch.
+    """
     found = (root / "experiments" / exp).glob(f"{stem}-*")
-    return max(
-        (p for p in found if re.fullmatch(rf"{stem}-\d{{4}}-\d\d-\d\d", p.name)), default=None
-    )
+    name = re.compile(rf"{re.escape(stem)}-(\d{{4}}-\d\d-\d\d)(?:-seed(\d+))?")
+    keys = {p: m.groups() for p in found if (m := name.fullmatch(p.name))}
+    newest = sorted(keys, key=lambda p: (keys[p][0], int(keys[p][1] or 0)), reverse=True)
+    return next((p for p in newest if not pod_mismatch(p, pod_id)), newest[0] if newest else None)
+
+
+def seed_folder(folder: Path) -> Path:
+    """Return *folder*, or ``<name>-seed<n>`` (the next free n) when it exists: a same-day seed."""
+    n, found = 0, folder
+    while found.exists():
+        n += 1
+        found = folder.with_name(f"{folder.name}-seed{n}")
+    return found
 
 
 def pod_mismatch(folder: Path, pod_id: str) -> str:
@@ -171,7 +186,9 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
         stem = plan.stages.removesuffix("_stages.txt").replace("_", "-")
         plan.folder = plan.root / "experiments" / EXP.name / f"{stem}-{datetime.now(UTC):%Y-%m-%d}"
         if plan.reuse:
-            plan.folder = resume_folder(plan.root, EXP.name, stem) or plan.folder
+            plan.folder = resume_folder(plan.root, EXP.name, stem, args.pod_id) or plan.folder
+        elif plan.seed_from:  # the source folder may be today's: never reuse it
+            plan.folder = seed_folder(plan.folder)
     except Exception as error:  # noqa: BLE001 - any failure here is a refusal with its reason
         return [*problems, f"cannot list the inputs: {type(error).__name__}: {error}"], plan
     missing = [n for n in plan.sent() if not (plan.folder / "inputs" / n).is_file()]

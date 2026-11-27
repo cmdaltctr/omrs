@@ -338,16 +338,16 @@ def test_a_stop_line_waits_for_the_chain_tarball_before_the_pull(tmp_path: Path)
     assert _last(result) == f"DELETE_POD_NOW {POD}"
 
 
-def test_lost_ssh_ends_the_watch_and_still_prints_delete(tmp_path: Path) -> None:
+def test_lost_ssh_ends_the_watch_and_keeps_the_pod(tmp_path: Path) -> None:
     s = Session(tmp_path, ["+[00:00:01] == a: start", "ssh-off"])
     result = s.run()
     assert result.returncode == 10
     assert "RESULT end=ssh-lost outputs=pull-failed pulled-marker=not-written" in result.stdout
     assert not (s.work / "PULLED").exists()
-    assert _last(result) == f"DELETE_POD_NOW {POD}"
+    assert _last(result).startswith(f"KEEP_POD {POD}")
 
 
-def test_a_hash_mismatch_on_pull_is_loud_and_still_prints_delete(tmp_path: Path) -> None:
+def test_a_hash_mismatch_on_pull_is_loud_and_keeps_the_pod(tmp_path: Path) -> None:
     s = Session(tmp_path, ["badsha"])
     result = s.run()
     assert result.returncode == 11
@@ -357,7 +357,7 @@ def test_a_hash_mismatch_on_pull_is_loud_and_still_prints_delete(tmp_path: Path)
     pulls = [line for line in s.log("scp.log") if "test-session-out.tgz.sha256" in line]
     assert len(pulls) == 1  # ssh checks bytes in transit; a second copy cannot fix it
     assert (s.folder() / "test-session-out.tgz").is_file()
-    assert _last(result) == f"DELETE_POD_NOW {POD}"
+    assert _last(result).startswith(f"KEEP_POD {POD}")
 
 
 def test_a_failed_tarball_copy_is_tried_once_more(tmp_path: Path) -> None:

@@ -8,7 +8,10 @@ calls that fail with exit 22 before the stub works again. ``curl.fail-match`` ho
 text: every call whose path holds it fails. ``curl.mirror`` holds a pod work folder: a GET
 then serves the file that an upload of it would have made (``stage-out/<f>`` or ``final/<f>``
 of the key maps to ``<mirror>/stage-out/<f>`` or ``<mirror>/<f>``). ``curl.corrupt`` holds a
-text: a GET whose path holds it returns other bytes. No test reaches a network host.
+text: a GET whose path holds it returns other bytes. ``curl.hang`` holds a count: that many
+calls hang, as a stalled connection would. The stub then waits ``--max-time`` seconds and exits
+28 like curl; without ``--max-time`` it waits 5 s, still exits 28, and the test sees the
+missing argument in ``curl.argv``. No test reaches a network host.
 """
 
 from __future__ import annotations
@@ -32,6 +35,7 @@ while [ "$i" -lt "$#" ]; do
   case "${args[$i]}" in
     -T) put="${args[$((i + 1))]}"; i=$((i + 2)); continue ;;
     -K | --aws-sigv4) [ "${args[$i]}" = -K ] && cfg=1; i=$((i + 2)); continue ;;
+    --connect-timeout | --max-time) i=$((i + 2)); continue ;;
     -*) ;;
     *) url="${args[$i]}" ;;
   esac
@@ -41,6 +45,13 @@ done
 path="${url#https://*/}"
 verb=GET; [ -n "$put" ] && verb=PUT
 echo "$verb $path" >> "$T/curl.calls"
+if [ -f "$T/curl.hang" ] && [ "$(cat "$T/curl.hang")" -gt 0 ]; then
+  echo $(($(cat "$T/curl.hang") - 1)) > "$T/curl.hang"
+  limit=5
+  for ((j = 0; j < $#; j++)); do [ "${args[$j]}" = --max-time ] && limit="${args[$((j + 1))]}"; done
+  sleep "$limit"
+  exit 28
+fi
 if [ -f "$T/curl.fail-match" ] && [[ "$path" == *"$(cat "$T/curl.fail-match")"* ]]; then exit 22; fi
 if [ -f "$T/curl.fail" ]; then
   n=$(cat "$T/curl.fail")

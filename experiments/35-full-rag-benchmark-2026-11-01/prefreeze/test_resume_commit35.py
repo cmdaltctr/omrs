@@ -256,3 +256,36 @@ def test_a_spare_restore_with_the_override_skips_and_writes_the_record(
     assert [(r["stage"], r["tarball_commit"], r["run_commit"]) for r in _record(tmp_path)] == [
         ("a", old, new)
     ]
+
+
+def _block_the_record(tmp_path: Path) -> None:
+    """Make resume-record.jsonl impossible to write: a folder sits at its path."""
+    (tmp_path / "smoke-out" / "resume-record.jsonl").mkdir()
+
+
+def test_an_override_skip_that_cannot_write_its_record_runs_the_stage_again(
+    tmp_path: Path, repo: Repo
+) -> None:
+    old = repo.head
+    _run(tmp_path, RUN)
+    new = repo.commit()
+    _block_the_record(tmp_path)
+    result, _ = _run(tmp_path, RUN, RESUME="1", RESUME_FROM_COMMIT=old)
+    assert _lines(tmp_path / "smoke-out" / "a.count") == ["x", "x"]  # it ran
+    assert "== a: cannot write the resume record, running it again" in result.stdout
+    assert "SKIPPED" not in result.stdout and "resumed: none" in result.stdout
+    assert (
+        _stage_out(tmp_path) / "01-a.tgz.commit"
+    ).read_text() == f"{new}\n"  # packed at the run commit
+
+
+def test_a_spare_override_skip_that_cannot_write_its_record_runs_the_stage_again(
+    tmp_path: Path, repo: Repo
+) -> None:
+    spare, old, new = _spare_run(tmp_path, repo)
+    _block_the_record(tmp_path)
+    result, _ = _run(tmp_path, RUN, RESUME="1", SPARE_DIR=str(spare), RESUME_FROM_COMMIT=old)
+    assert _lines(tmp_path / "smoke-out" / "a.count") == ["x", "x"]
+    assert "== a: cannot write the resume record, running it again" in result.stdout
+    assert "SKIPPED" not in result.stdout
+    assert (_stage_out(tmp_path) / "01-a.tgz.commit").read_text() == f"{new}\n"

@@ -86,6 +86,10 @@ KEEP_TEXT = (  # the last line when the chain kept the pod after a failure
     "fix the stage and push the fix, then run again with --resume and the new --commit "
     "(otherwise the same arguments); delete the pod yourself when done"
 )
+ATTACH_HOLD = (  # why the last line is KEEP_POD until --attach is on the chain
+    "--attach did not end normally: the pod may run the chain and hold stage tarballs "
+    "that the Mac lacks. Fix the cause and run --attach (or --resume) again"
+)
 _hold: list[str] = []  # why the last line is KEEP_POD and not DELETE_POD_NOW
 
 
@@ -197,10 +201,10 @@ def setup(pod: Pod, plan: Plan, shas: dict[str, str]) -> str | None:
             return "no-ssh"
         pause(SSH_POLL_S)
     if plan.attach:
-        if why := watch_modes35.attach_refusal(pod, SESSION):
+        if why := watch_modes35.attach_refusal(pod, SESSION, PULLED):
             say(f"REFUSED: {why}")
-            _hold.append(why)  # the pod may hold stage tarballs: no delete line
-            return "refused"
+            return "refused"  # the attach hold stays: no delete line
+        _hold.remove(ATTACH_HOLD)  # the watcher is on the chain: a normal end applies
         say("steps 4 and 5: --attach: the chain runs; no inputs copy, no session.env, no launch")
         return None
     check = pod.ssh(watch_stages35.inputs_match_cmd(INPUTS, shas)) if plan.resume else None
@@ -368,6 +372,8 @@ def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
 def run(args: argparse.Namespace) -> int:
     """Steps 1 to 8; return the exit code."""
     start = now()
+    if args.attach and not args.dry_run:
+        _hold.append(ATTACH_HOLD)  # every way out before the attach works keeps the pod
     problems, plan = prepare(args)
     if args.dry_run:
         return dry_run(args, plan, problems)
@@ -400,6 +406,10 @@ def run(args: argparse.Namespace) -> int:
     signal.pthread_sigmask(signal.SIG_BLOCK, _SIGNALS)  # no signal may cut the pull short
     outputs, marker, stop = end_session(pod, w, reason, plan.folder, stages, plan.keep)
     say(stages.summary())
+    if outputs != "ok":  # the final outputs may exist only on the pod
+        _hold.append(
+            f"the final outputs were not pulled ({outputs}): the pod may hold the only copy"
+        )
     if hold := watch_offsite35.report(plan, plan.folder, say):
         _hold.append(hold)  # an object is not in R2: the pod may hold the only copy
     if w.stop_failed:

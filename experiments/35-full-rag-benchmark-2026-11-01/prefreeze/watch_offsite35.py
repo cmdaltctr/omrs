@@ -19,6 +19,7 @@ from pathlib import Path
 BUCKET = "omrs-exp35-results"  # also the default of R2_BUCKET in offsite35.sh
 NAMES = ("R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_ENDPOINT")
 FINAL = "test-session-out.tgz.sha256"  # the final tarball's hash file, as in the bucket
+LOG = "test-session.log"  # the chain log, uploaded to final/ with the final tarball
 GET_S = 120
 
 
@@ -109,6 +110,9 @@ def report(plan: object, folder: Path, say: Callable[[str], None]) -> str:
             record.read_text(encoding="utf-8").split()
         ):
             bad.append(record.name.removesuffix(".sha256"))
+    # The chain log goes up with the final tarball: the object must exist when a run made one.
+    if final and (folder / LOG).is_file() and _get(keys, f"{prefix(plan)}/final/{LOG}") is None:
+        bad.append(LOG)
     if not bad:
         say(f"off-site: {len(stage)} stage, {len(final)} final verified in {where}")
         return ""

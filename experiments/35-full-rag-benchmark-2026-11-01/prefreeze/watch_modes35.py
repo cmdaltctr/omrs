@@ -81,15 +81,21 @@ def dry_lines(attach: bool, seed_from: str) -> list[str]:
     return []
 
 
-def attach_refusal(pod: Any, session: str) -> str:
-    """Return why the watcher cannot join the chain, or ``""`` when the tmux session runs."""
+def attach_refusal(pod: Any, session: str, pulled: str) -> str:
+    """Return why the watcher cannot join the chain, or ``""`` when it can.
+
+    The tmux session must run. A stale ``PULLED`` marker (from an earlier watcher) is removed:
+    it would let the chain stop the pod before this watcher pulls the final outputs.
+    """
     found = pod.ssh(f"tmux has-session -t {session} 2>/dev/null")
-    if found is not None and found.returncode == 0:
-        return ""
-    return (
-        f"--attach: no tmux session {session} runs on the pod. The pod and its stage "
-        "tarballs are untouched. Use --resume to launch the chain again"
-    )
+    if found is None or found.returncode != 0:
+        return (
+            f"--attach: no tmux session {session} runs on the pod. The pod and its stage "
+            "tarballs are untouched. Use --resume to launch the chain again"
+        )
+    if not pod.ok(f"rm -f {pulled}", timeout=120):
+        return f"--attach: cannot remove a stale {pulled} on the pod (the chain could stop early)"
+    return ""
 
 
 def seed(pod: Any, plan: Any, remote_dir: str, say: Callable[[str], None]) -> bool:

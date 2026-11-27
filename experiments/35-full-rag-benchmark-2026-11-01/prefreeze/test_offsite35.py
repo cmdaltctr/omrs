@@ -8,6 +8,7 @@ curl of r2_testkit35.py and the stubs of test_pod_test_session_script.py.
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -216,3 +217,115 @@ def test_a_stage_that_a_resume_skips_is_not_uploaded_again(tmp_path: Path) -> No
     assert [x for x in _put_ok(tmp_path) if "/stage-out/" in x] == [
         x for x in _put_ok(tmp_path)[:first] if "/stage-out/" in x
     ]
+
+
+# Each curl try is bounded, so a stalled connection ends and uses the retry path.
+def test_each_try_has_a_connect_timeout_and_a_total_time_limit(tmp_path: Path) -> None:
+    result, _ = _go(tmp_path)
+    assert result.returncode == 0, result.stdout
+    puts = [x for x in r2.lines(tmp_path, "curl.argv") if "-T " in x]
+    assert puts and all("--connect-timeout 30 " in x and "--max-time 7200 " in x for x in puts)
+
+
+def test_the_limits_can_be_set_and_a_stalled_try_is_retried(tmp_path: Path) -> None:
+    (tmp_path / "curl.hang").write_text("2\n", encoding="utf-8")  # two tries stall
+    result, _ = _go(tmp_path, OFFSITE_CONNECT_TIMEOUT="2", OFFSITE_MAX_TIME="1")
+    assert result.returncode == 0, result.stdout
+    argv = r2.lines(tmp_path, "curl.argv")
+    assert all("--connect-timeout 2 " in x and "--max-time 1 " in x for x in argv if "-T " in x)
+    probe = [x for x in r2.lines(tmp_path, "curl.calls") if x.endswith("/probe.txt")]
+    assert len(probe) == 3 and r2.bucket(tmp_path, *PREFIX.split("/"), "probe.txt").is_file()
+
+
+# A stage that a resume skips, or that --seed-from supplies, reaches the active prefix too.
+def _resume_at(tmp_path: Path, prefix: str, **env: str | None):  # noqa: ANN202
+    return _go(tmp_path, RESUME="1", R2_PREFIX=prefix, **env)
+
+
+def _objects(tmp_path: Path, prefix: str, tag: str) -> list[str]:
+    folder = tmp_path / "bucket" / r2.BUCKET / prefix / "stage-out"
+    return sorted(p.name for p in folder.glob(f"{tag}.*")) if folder.is_dir() else []
+
+
+def test_a_skipped_stage_is_uploaded_to_a_new_prefix_in_order(tmp_path: Path) -> None:
+    _go(tmp_path)  # prefix one
+    (tmp_path / "curl.ok").unlink()
+    result, _ = _resume_at(tmp_path, "test-session-2026-11-27-seed1/pod555")
+    assert result.returncode == 0, result.stdout
+    assert "== a: SKIPPED (resume, done in 01-a.tgz)" in result.stdout
+    assert _stage_calls(tmp_path, "01-a") == ["01-a.tgz", "01-a.tgz.commit", "01-a.tgz.sha256"]
+    assert (
+        "== a: off-site copy in r2://omrs-exp35-results/test-session-2026-11-27-seed1/pod555/"
+        in (result.stdout)
+    )
+    want = (tmp_path / "work" / "stage-out" / "01-a.tgz.sha256").read_bytes()
+    sent = tmp_path / "bucket" / r2.BUCKET / "test-session-2026-11-27-seed1/pod555/stage-out"
+    assert (sent / "01-a.tgz.sha256").read_bytes() == want  # what the Mac check compares
+
+
+def test_a_skipped_stage_with_the_same_prefix_and_hash_is_not_uploaded_twice(
+    tmp_path: Path,
+) -> None:
+    _go(tmp_path)
+    (tmp_path / "curl.ok").unlink()
+    _resume_at(tmp_path, PREFIX)
+    assert not [x for x in _put_ok(tmp_path) if "/stage-out/" in x]
+
+
+def test_an_override_skip_is_uploaded_to_the_new_prefix(tmp_path: Path) -> None:
+    _go(tmp_path)
+    (tmp_path / "work" / "stage-out" / "01-a.tgz.commit").write_text("b" * 40 + "\n")
+    (tmp_path / "curl.ok").unlink()
+    result, _ = _resume_at(tmp_path, "other/pod2", RESUME_FROM_COMMIT="b" * 40)
+    assert "RESUME_FROM_COMMIT)" in result.stdout
+    assert _objects(tmp_path, "other/pod2", "01-a") == [
+        "01-a.tgz", "01-a.tgz.commit", "01-a.tgz.sha256"
+    ]  # fmt: skip
+
+
+def test_a_seeded_stage_and_a_spare_restore_are_uploaded_to_the_new_prefix(
+    tmp_path: Path,
+) -> None:
+    spare = tmp_path / "spare"
+    _run(tmp_path, STAGES, SPARE_DIR=str(spare))  # no R2: the earlier pod
+    for name in ("01-a", "02-b"):
+        (tmp_path / "work" / "stage-out" / f"{name}.tgz.unpacked").unlink()  # a seeded pod
+    shutil.rmtree(tmp_path / "work" / "stage-out" / "x", ignore_errors=True)
+    (tmp_path / "work" / "stage-out" / "02-b.tgz").unlink()  # restored from the spare
+    (tmp_path / "work" / "stage-out" / "02-b.tgz.sha256").unlink()
+    result, _ = _resume_at(tmp_path, "seeded/pod3", SPARE_DIR=str(spare))
+    assert result.returncode == 0, result.stdout
+    assert "== a: unpacked 01-a.tgz (seeded)" in result.stdout and "RESTORED from" in result.stdout
+    for tag in ("01-a", "02-b"):
+        assert _objects(tmp_path, "seeded/pod3", tag) == [
+            f"{tag}.tgz", f"{tag}.tgz.commit", f"{tag}.tgz.sha256"
+        ]  # fmt: skip
+
+
+# The final copy is complete or it is reported as failed.
+def test_a_failed_log_snapshot_withholds_the_final_sha256_and_counts_as_a_failure(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "work").mkdir()
+    (tmp_path / "work" / "test-session.log").write_text("chain log\n", encoding="utf-8")
+    (tmp_path / "work" / "offsite-final").write_text("a file, not a folder\n", encoding="utf-8")
+    result, _ = _go(tmp_path, OFFSITE_REQUIRED="0")
+    assert result.returncode == 0, result.stdout
+    assert "== finish: off-site copy of the final outputs FAILED" in result.stdout
+    assert "off-site copy of the final outputs in" not in result.stdout
+    assert not [x for x in _put_ok(tmp_path) if "/final/test-session-out.tgz.sha256" in x]
+    assert "== finish: off-site copies failed: 2" in result.stdout  # the log and the .sha256
+    pending = (tmp_path / "work" / "offsite.pending").read_text()
+    assert f"{PREFIX}/final/test-session.log" in pending
+    assert f"{PREFIX}/final/test-session-out.tgz.sha256" in pending
+
+
+# A failed pending copy blocks every later one: no .sha256 file goes up before its tarball.
+def test_the_retry_stops_at_the_first_failure_and_keeps_every_later_entry(tmp_path: Path) -> None:
+    (tmp_path / "curl.fail-match").write_text("stage-out/01-a.tgz", encoding="utf-8")
+    (tmp_path / "curl.fail").write_text("3\n", encoding="utf-8")  # the 3 tries of 02-b.tgz
+    result, _ = _go(tmp_path, OFFSITE_REQUIRED="0")
+    assert result.returncode == 0, result.stdout
+    assert "== finish: off-site retry: 0 of 6 pending copies done" in result.stdout
+    assert not [x for x in _put_ok(tmp_path) if "/stage-out/02-b" in x]
+    assert (tmp_path / "smoke-out" / "offsite-failed.txt").read_text().count("\n") == 6

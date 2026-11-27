@@ -60,8 +60,9 @@ This runbook is for the operator's agent. The agent creates and deletes the pod 
 
 ## Exit codes
 
-Every code except 14 ends with `DELETE_POD_NOW <id>`. Delete the pod for those codes.
-Code 14 ends with `KEEP_POD <id>`. Keep the pod, fix the cause, then resume.
+Delete the pod only when the last line is `DELETE_POD_NOW <id>`. When the last line is `KEEP_POD <id>`, keep the pod and read the reason on that line.
+A `KEEP_POD` line follows exit code 14, a final pull that did not end `ok`, an `OFFSITE_NOT_VERIFIED` line, a stage tarball that the Mac lacks, and every `--attach` that did not succeed.
+Fix the cause, then resume or attach.
 
 | Code | Meaning | Extra action |
 | ---: | --- | --- |
@@ -393,7 +394,7 @@ The pod is stopped, not deleted:
 The pod or its volume is lost, and the Mac holds the stage tarballs:
 
 1. Create a new pod. Use its id as `--pod-id`.
-2. Rename the old results folder, because the watcher never overwrites a folder. Example: `mv test-session-<date> old-test-session-<date>`.
+2. Leave the old results folder as it is. The watcher never overwrites a folder. On the same day, it makes `test-session-<date>-seed<n>` (the next free `n`) for the new session. `--resume` and `--attach` find the newest folder that recorded their `--pod-id`.
 3. Start the watcher with the new `--pod-id`, the same `--commit` and `--stages`. Add `--seed-from <absolute path of the old results folder>`.
 4. The watcher checks the SHA-256 of each stage tarball in the old `stage-out/`. A mismatch is a `PROBLEM` and nothing starts.
 5. The watcher copies the inputs. It then copies each `<tag>.tgz`, `<tag>.tgz.commit` and `<tag>.tgz.sha256` to the new pod and to the new results folder.

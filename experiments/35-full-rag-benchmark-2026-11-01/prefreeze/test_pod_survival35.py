@@ -16,6 +16,7 @@ from pathlib import Path
 
 from test_pod_stage_tarballs import _stage_out
 from test_pod_test_session_script import _lines, _run
+from test_resume_commit35 import Repo, repo  # noqa: F401 - a fixture: an isolated EXP35
 
 RUN = 'a sh -c \'echo x >> "$OUT_DIR/a.count"; echo A > "$OUT_DIR/a.out"\'\n'
 FINAL = ("test-session-out.tgz", "test-session.log", "test-session-out.tgz.sha256")
@@ -39,8 +40,12 @@ def _recording_stub(tmp_path: Path, name: str, body: str) -> str:
 
 def test_finish_copies_the_outputs_the_log_and_the_sha256_last_to_the_spare(
     tmp_path: Path,
+    repo: Repo,  # noqa: F811 - the imported fixture
 ) -> None:
     log = _log(tmp_path)
+    records = repo.root / "experiments" / "exp" / "output"  # finish copies it with cp -p
+    records.mkdir()
+    (records / "run-records.jsonl").write_text("{}\n", encoding="utf-8")
     spare = tmp_path / "spare"
     cp = _recording_stub(
         tmp_path, "cp", f'echo "$1" >> "{tmp_path}/cp-calls"\nexec {shutil.which("cp")} "$@"\n'
@@ -51,8 +56,8 @@ def test_finish_copies_the_outputs_the_log_and_the_sha256_last_to_the_spare(
     for name in FINAL:
         assert (spare / name).read_bytes() == (work / name).read_bytes(), name
     assert (spare / "test-session.log").read_text() == log.read_text()
-    calls = [Path(x).name for x in _lines(tmp_path / "cp-calls") if "stage-out" not in x]
-    assert calls == list(FINAL)  # the .sha256 file last
+    names = [Path(x).name for x in _lines(tmp_path / "cp-calls")]
+    assert [x for x in names if x in FINAL] == list(FINAL)  # the .sha256 file last
     assert f"== finish: spare copy of the final outputs in {spare}" in result.stdout
 
 

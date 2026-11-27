@@ -78,7 +78,9 @@ def test_every_object_matching_gives_the_verified_line_and_the_delete_path(tmp_p
     assert "OFFSITE_NOT_VERIFIED" not in result.stdout
     assert _last(result) == f"DELETE_POD_NOW {POD}"
     gets = r2.lines(tmp_path, "curl.calls")
-    assert all(x.startswith("GET") for x in gets) and len(gets) == 3
+    assert (
+        all(x.startswith("GET") for x in gets) and len(gets) == 4
+    )  # two stages, the final sha256, the log
     assert f"GET {r2.BUCKET}/{_prefix(s)}/stage-out/{TAG}.tgz.sha256" in gets
     assert f"GET {r2.BUCKET}/{_prefix(s)}/final/test-session-out.tgz.sha256" in gets
 
@@ -182,3 +184,44 @@ def test_the_secret_is_never_in_an_argument_the_output_or_a_file(tmp_path: Path)
     assert "--aws-sigv4 aws:amz:auto:s3 -K -" in argv
     assert f'user = "{r2.KEY_ID}:{r2.SECRET}"' in "\n".join(r2.lines(tmp_path, "curl.stdin"))
     assert os.environ.get("R2_SECRET_ACCESS_KEY") is None
+
+
+# F9: a final pull that did not end ok keeps the pod.
+def test_a_final_pull_with_a_bad_hash_keeps_the_pod(tmp_path: Path) -> None:
+    s = Session(tmp_path, ["badsha"])
+    result = s.run()
+    assert result.returncode == 11 and "end=done outputs=hash-mismatch" in result.stdout
+    assert _last(result).startswith(f"KEEP_POD {POD}") and "hash-mismatch" in _last(result)
+    assert "DELETE_POD_NOW" not in result.stdout
+
+
+def test_a_final_pull_that_failed_keeps_the_pod(tmp_path: Path) -> None:
+    lost = Session(tmp_path, ["+[00:00:01] == a: start", "ssh-off"])
+    result = lost.run()
+    assert result.returncode == 10 and "outputs=pull-failed" in result.stdout
+    assert _last(result).startswith(f"KEEP_POD {POD}") and "DELETE_POD_NOW" not in result.stdout
+
+
+def test_a_final_pull_that_ends_ok_still_prints_the_delete_line(tmp_path: Path) -> None:
+    result = Session(tmp_path, ["done"]).run()
+    assert "outputs=ok" in result.stdout and _last(result) == f"DELETE_POD_NOW {POD}"
+
+
+# F10: the check needs the final log object too, when the run made a log.
+def test_a_missing_final_log_object_is_not_verified(tmp_path: Path) -> None:
+    s = _on(tmp_path)
+    (tmp_path / "curl.fail-match").write_text("final/test-session.log", encoding="utf-8")
+    result = _run(s)
+    assert "!!! OFFSITE_NOT_VERIFIED: test-session.log" in result.stdout
+    assert "verified in" not in result.stdout
+    assert _last(result).startswith(f"KEEP_POD {POD}")
+    gets = r2.lines(tmp_path, "curl.calls")
+    assert f"GET {r2.BUCKET}/{_prefix(s)}/final/test-session.log" in gets
+
+
+def test_the_log_object_is_not_needed_when_there_is_no_final_tarball(tmp_path: Path) -> None:
+    s = _on(tmp_path, ["+[00:00:01] == a: start (timeout 600s)", "term"])
+    _stage(s)
+    (tmp_path / "curl.fail-match").write_text("final/", encoding="utf-8")
+    result = _run(s)
+    assert "off-site: 1 stage, 0 final verified" in result.stdout

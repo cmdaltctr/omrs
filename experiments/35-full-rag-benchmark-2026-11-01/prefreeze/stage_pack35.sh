@@ -117,15 +117,19 @@ commit_verdict() {
   fi
 }
 
-# note_override <tag> <tgz>: log a skip that RESUME_FROM_COMMIT allowed, and add one line to
-# $OUT_DIR/resume-record.jsonl (the final tarball carries it: the deviation record).
+# note_override <tag> <tgz>: add one line to $OUT_DIR/resume-record.jsonl (the final tarball
+# carries it: the deviation record), then log the skip that RESUME_FROM_COMMIT allowed.
+# Status 1 when the record cannot be written: the stage then runs again, at RUN_COMMIT.
 note_override() {
   local hash
   hash="$(stored_hash "$2")"
+  if ! printf '{"stage": "%s", "tag": "%s", "tarball_commit": "%s", "run_commit": "%s", "sha256": "%s"}\n' \
+    "$NAME" "$1" "$TAR_COMMIT" "$RUN_COMMIT" "$hash" >>"$OUT_DIR/resume-record.jsonl"; then
+    log "== $NAME: cannot write the resume record, running it again"
+    return 1
+  fi
   log "== $NAME: SKIPPED (resume, done in $1.tgz at ${TAR_COMMIT:0:7}, this run is" \
     "${RUN_COMMIT:0:7}; RESUME_FROM_COMMIT)"
-  printf '{"stage": "%s", "tag": "%s", "tarball_commit": "%s", "run_commit": "%s", "sha256": "%s"}\n' \
-    "$NAME" "$1" "$TAR_COMMIT" "$RUN_COMMIT" "$hash" >>"$OUT_DIR/resume-record.jsonl"
 }
 
 # unpack_once <tag>: unpack the local tarball unless its .unpacked marker exists, then touch
@@ -166,8 +170,9 @@ resume_skip() {
           if [ "$VERDICT" = same ]; then
             log "== $NAME: SKIPPED (resume, done in $1.tgz)"
           else
-            note_override "$1" "$tgz"
+            note_override "$1" "$tgz" || return 1
           fi
+          offsite_stage "$1"
           return 0
           ;;
       esac
@@ -184,8 +189,9 @@ resume_skip() {
         if [ "$VERDICT" = same ]; then
           log "== $NAME: RESTORED from $spare, SKIPPED (resume)"
         else
-          note_override "$1" "$tgz"
+          note_override "$1" "$tgz" || return 1
         fi
+        offsite_stage "$1"
         return 0
       fi
     fi

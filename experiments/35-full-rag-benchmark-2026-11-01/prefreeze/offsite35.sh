@@ -9,7 +9,9 @@
 # Environment: R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT (from the RunPod
 # secrets, see launch35.sh), R2_PREFIX (results folder name and pod id, from session.env),
 # R2_BUCKET (default omrs-exp35-results), OFFSITE_REQUIRED (1: refuse to start without a
-# working off-site copy), OFFSITE_BACKOFF (seconds to wait between the 3 tries, default "2 6").
+# working off-site copy), OFFSITE_BACKOFF (seconds to wait between the 3 tries, default "2 6"),
+# OFFSITE_CONNECT_TIMEOUT (default 30 s) and OFFSITE_MAX_TIME (default 7200 s for one try: a
+# stalled connection ends and uses the retry path; a multi-GB stage tarball fits).
 # The caller sets WORK, OUT_DIR, DRY_RUN, NAME, SESSION_LOG, TARBALL, RUN_COMMIT, STAGE_OUT
 # and the log, refuse and run functions.
 #
@@ -21,6 +23,8 @@ OFFSITE_ON=0
 OFFSITE_FAILS=0
 OFFSITE_PENDING="${WORK:-}/offsite.pending"
 OFFSITE_BACKOFF="${OFFSITE_BACKOFF:-2 6}"
+OFFSITE_CONNECT_TIMEOUT="${OFFSITE_CONNECT_TIMEOUT:-30}"
+OFFSITE_MAX_TIME="${OFFSITE_MAX_TIME:-7200}"
 
 # offsite_put <file> <key>: PUT the file to <bucket>/<key>; up to 3 tries with a back-off.
 offsite_put() {
@@ -29,7 +33,8 @@ offsite_put() {
   local -a waits=($OFFSITE_BACKOFF)
   while [ "$try" -lt 3 ]; do
     if printf 'user = "%s:%s"\n' "$R2_ACCESS_KEY_ID" "$R2_SECRET_ACCESS_KEY" \
-      | curl -fsS --aws-sigv4 "aws:amz:auto:s3" -K - -T "$1" \
+      | curl -fsS --connect-timeout "$OFFSITE_CONNECT_TIMEOUT" --max-time "$OFFSITE_MAX_TIME" \
+        --aws-sigv4 "aws:amz:auto:s3" -K - -T "$1" \
         "$R2_ENDPOINT/$R2_BUCKET/$2" >/dev/null; then
       return 0
     fi
@@ -89,12 +94,20 @@ offsite_setup() {
   log "off-site probe uploaded to $(offsite_url probe.txt)"
 }
 
-# offsite_stage <tag>: after a stage tarball is packed, upload tarball, commit file, sha256.
+# offsite_stage <tag>: upload tarball, commit file, sha256 (last) under the active prefix.
+# Call it after a stage is packed and on every path that skips a done stage (resume, seed,
+# spare restore): a new pod writes a new prefix. The marker <tag>.tgz.offsite holds the
+# prefix and the hash of the last complete upload, so the same copy is not sent twice.
 offsite_stage() {
   [ "$OFFSITE_ON" = 1 ] || return 0
-  offsite_send "$NAME" stage-out "$STAGE_OUT/$1.tgz" "$STAGE_OUT/$1.tgz.commit" \
-    "$STAGE_OUT/$1.tgz.sha256" \
-    || log "== $NAME: off-site copy FAILED (kept for a retry at the end)"
+  local tgz="$STAGE_OUT/$1.tgz" want
+  want="$R2_PREFIX $(stored_hash "$tgz")"
+  [ "$(cat "$tgz.offsite" 2>/dev/null)" != "$want" ] || return 0
+  if offsite_send "$NAME" stage-out "$tgz" "$tgz.commit" "$tgz.sha256"; then
+    printf '%s\n' "$want" >"$tgz.offsite"
+  else
+    log "== $NAME: off-site copy FAILED (kept for a retry at the end)"
+  fi
 }
 
 # offsite_stage_dry <tag>: say what offsite_stage would do.
@@ -107,16 +120,16 @@ offsite_stage_dry() {
 # offsite_retry: try each pending copy once more (3 tries each); keep the ones that fail.
 offsite_retry() {
   [ "$OFFSITE_ON" = 1 ] && [ "$DRY_RUN" != 1 ] && [ -s "$OFFSITE_PENDING" ] || return 0
-  local file key total=0 done_n=0 blocked="" stem keep="$OFFSITE_PENDING.next"
+  local file key total=0 done_n=0 blocked=0 keep="$OFFSITE_PENDING.next"
   : >"$keep"
   while IFS=$'\t' read -r file key; do
     total=$((total + 1))
-    stem="${file%.tgz*}"
-    case " $blocked " in *" $stem "*) printf '%s\t%s\n' "$file" "$key" >>"$keep"; continue ;; esac
-    if offsite_put "$file" "$key"; then
+    # After one failure every later entry stays pending: a .sha256 file never goes up
+    # before its tarball, and a final checksum never before its log.
+    if [ "$blocked" = 0 ] && offsite_put "$file" "$key"; then
       done_n=$((done_n + 1))
     else
-      blocked="$blocked $stem"
+      blocked=1
       printf '%s\t%s\n' "$file" "$key" >>"$keep"
     fi
   done <"$OFFSITE_PENDING"
@@ -136,11 +149,22 @@ offsite_final() {
     return 0
   fi
   local -a files=("$TARBALL")
+  local snap="$WORK/offsite-final/test-session.log" lost=0
   if [ -f "$SESSION_LOG" ]; then
-    mkdir -p "$WORK/offsite-final" && cp "$SESSION_LOG" "$WORK/offsite-final/test-session.log" \
-      && files+=("$WORK/offsite-final/test-session.log")
+    if mkdir -p "$WORK/offsite-final" && cp "$SESSION_LOG" "$snap"; then
+      files+=("$snap")
+    else
+      lost=1
+    fi
   fi
-  if offsite_send "" final "${files[@]}" "$TARBALL.sha256"; then
+  if [ "$lost" = 1 ]; then
+    # No snapshot of the log: send the tarball, keep the log and the checksum pending.
+    offsite_put "$TARBALL" "$R2_PREFIX/final/$(basename "$TARBALL")" \
+      || printf '%s\t%s\n' "$TARBALL" "$R2_PREFIX/final/$(basename "$TARBALL")" >>"$OFFSITE_PENDING"
+    printf '%s\t%s\n%s\t%s\n' "$SESSION_LOG" "$R2_PREFIX/final/test-session.log" \
+      "$TARBALL.sha256" "$R2_PREFIX/final/$(basename "$TARBALL").sha256" >>"$OFFSITE_PENDING"
+    log "== finish: off-site copy of the final outputs FAILED (the log snapshot failed; kept in $OFFSITE_PENDING)"
+  elif offsite_send "" final "${files[@]}" "$TARBALL.sha256"; then
     log "== finish: off-site copy of the final outputs in $(offsite_url final/)"
   else
     log "== finish: off-site copy of the final outputs FAILED (kept in $OFFSITE_PENDING)"
