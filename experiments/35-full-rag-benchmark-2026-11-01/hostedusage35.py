@@ -21,6 +21,7 @@ Each function reads saved files only; a value that is not defined reads
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,6 +30,7 @@ from typing import Any
 from outputs35 import read_rows
 
 NOT_DEFINED = "not defined"
+COST_SCOPE = "saved rows; billed total in billing_by_provider"
 #: RTX 4090 board power in watts (NVIDIA specification), the only GPU type (protocol 9.3).
 BOARD_WATTS = 450
 #: Row file, its role, its summary file, and where its tokens and cost come from.
@@ -108,11 +110,16 @@ def hosted_usage(out: Path) -> dict[str, Any]:
                 **per,
                 "calls": len(calls),
                 "resent_calls": NOT_DEFINED if per["summaries_missing"] else per["resent_calls"],
+                "closed_missing": NOT_DEFINED
+                if per["summaries_missing"]
+                else per["closed_missing"],
                 "input_tokens": _total(calls, "input_tokens") if by_rows else NOT_DEFINED,
                 "output_tokens": _total(calls, "output_tokens") if by_rows else NOT_DEFINED,
                 "cost_usd": _total(calls, "cost_usd", "reported_cost_usd")
                 if by_rows
                 else NOT_DEFINED,
+                # A failed attempt saves no cost, so row cost can miss billed failures.
+                "cost_scope": COST_SCOPE if by_rows else "billing export",
             }
         )
     return {"roles": rows}
@@ -124,7 +131,10 @@ def billing_by_provider(paths: Iterable[Path]) -> dict[str, float] | str:
     for path in paths:
         for row in json.loads(path.read_text(encoding="utf-8")):
             provider = str(row["provider"])
-            totals[provider] = round(totals.get(provider, 0.0) + float(row["usd"]), 12)
+            usd = float(row["usd"])
+            if not math.isfinite(usd):
+                raise ValueError(f"{path}: {provider} usd {row['usd']!r} is not a finite amount")
+            totals[provider] = round(totals.get(provider, 0.0) + usd, 12)
     return dict(sorted(totals.items())) if totals else NOT_DEFINED
 
 

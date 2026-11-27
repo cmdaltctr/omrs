@@ -164,3 +164,25 @@ def test_the_report_tables_carry_the_hosted_items(tmp_path: Path) -> None:
     assert hosted["energy"]["kwh"] == 0.9  # 2 closed GPU hours at 450 W
     assert hosted["stops"] == [{"kind": "out_of_credit", "stage": "answer"}]
     assert hosted["returned_model"] == ND  # no join.json
+
+
+def test_closed_calls_are_not_defined_when_a_summary_is_missing(tmp_path: Path) -> None:
+    _tree(tmp_path)
+    table = hostedusage35.hosted_usage(tmp_path)
+    assert _role(table, "answer", "ragas-judge")["closed_missing"] == ND
+    assert _role(table, "answer", "judge-glm")["closed_missing"] == 0  # measured zero
+
+
+def test_row_cost_is_labelled_as_saved_rows_only(tmp_path: Path) -> None:
+    _tree(tmp_path)
+    answer = _role(hostedusage35.hosted_usage(tmp_path), "answer", "answer")
+    assert answer["cost_scope"] == "saved rows; billed total in billing_by_provider"
+
+
+def test_non_finite_billing_amounts_are_refused(tmp_path: Path) -> None:
+    import pytest
+
+    bad = tmp_path / "bad.json"
+    _json(bad, [{"provider": "zai", "usd": "NaN"}])
+    with pytest.raises(ValueError, match="not a finite amount"):
+        hostedusage35.billing_by_provider([bad])
