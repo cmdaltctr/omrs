@@ -541,9 +541,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +22 (2026-11-27, PR 234 review, by test-ID diff against HEAD 14329e4d): 24 added (22 new
 # in prefreeze/test_offsite35 (8), _watch_modes35 (7), _watch_offsite35 (5) and
 # _resume_commit35 (2); 2 renamed in _mac_watch35, delete -> keep pod), 2 old IDs gone.
-# +8 (2026-11-27, PR 234 review: stop only on an ok verdict, by test-ID diff against HEAD
-# d97e5d01): 8 added in prefreeze/test_pod_survival35. None removed. No extra.
-_BASE_EXECUTED = 14353
+# +7 (2026-11-27, PR 234 review: stop only on an ok verdict, by test-ID diff against HEAD
+# d97e5d01): 7 added in prefreeze/test_pod_survival35. None removed. No extra.
+_BASE_EXECUTED = 14352
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
