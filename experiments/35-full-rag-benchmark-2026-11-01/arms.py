@@ -49,8 +49,8 @@ TOKENIZER_REVISION = "5cf2132abc99cad020ac570b19d031efec650f2b"  # gitleaks:allo
 ANSWER_CONTEXT_WINDOW = 131072
 ANSWER_MAX_ROUNDS = 1
 
-#: Starting concurrency and attempt values (design D18). Task 9.2 replaces them
-#: with the measured values before the freeze.
+#: Concurrency and attempt values (design D18), confirmed by the test pod sessions
+#: (task 10.4, 2026-11-27): no rate-limit stop at these values (protocol section 7).
 CONCURRENCY_DEFAULTS: Mapping[str, int] = {
     "answer_concurrency": 16,
     "chat_concurrency": 4,

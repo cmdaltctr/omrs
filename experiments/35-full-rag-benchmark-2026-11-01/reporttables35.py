@@ -68,6 +68,7 @@ import budget35  # noqa: E402
 import cells35  # noqa: E402
 import datasets35  # noqa: E402
 import factorial35  # noqa: E402
+import hostedusage35  # noqa: E402
 import join35  # noqa: E402
 import reportextra35  # noqa: E402
 import scoring35  # noqa: E402
@@ -362,6 +363,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--records", type=Path, nargs="*", default=[], help="pod run records")
     parser.add_argument("--rates", type=Path, help="budget rates file (pod_usd_per_hour)")
     parser.add_argument("--passages-dir", type=Path, help="the prepared passages folder")
+    parser.add_argument("--billing", type=Path, nargs="*", default=[], help="billing row files")
     args = parser.parse_args(argv)
     out = args.out_dir
     scoring35.require_half_b(out)  # the tables hold half-B scores (section 14.2)
@@ -393,7 +395,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         "alpha_ndcg_freshstack": _json(out / "alpha-ndcg.json") or NOT_RUN,
         "hybrid_trigger": hybrid_trigger_table(out),
         "number_match": number_match(out),
-        "compute": compute(args.records, args.rates),
+        "compute": (computed := compute(args.records, args.rates)),
+        "hosted": {
+            "usage": hostedusage35.hosted_usage(out),
+            "billing_by_provider": hostedusage35.billing_by_provider(args.billing),
+            "energy": hostedusage35.energy_estimate(computed),
+            "stops": hostedusage35.stops(out),
+            "returned_model": hostedusage35.returned_models(out),
+        },
         "fenced_rows": reportextra35.fenced_rows(args.passages_dir)
         if args.passages_dir
         else reportextra35.NOT_DEFINED,

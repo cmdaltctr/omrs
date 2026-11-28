@@ -46,7 +46,15 @@ class RateLimitStop(RuntimeError):
 
     The stage keeps the results that finished, writes no done-marker and exits
     with the rate-limit exit code. A later ``--resume`` sends the call again.
+
+    Attributes:
+        kind: ``rate_limit`` or ``out_of_credit`` (the report lists each stop).
     """
+
+    def __init__(self, message: str = "", *, kind: str = "rate_limit") -> None:
+        """Keep the message and the stop kind."""
+        super().__init__(message)
+        self.kind = kind
 
 
 @dataclass(frozen=True)
@@ -152,7 +160,8 @@ class HostedGate:
         if limit.kind == OUT_OF_CREDIT:
             raise RateLimitStop(
                 f"{self.role}: the provider account is out of credit (HTTP {status}); "
-                "top up the account, then run the same command with --resume"
+                "top up the account, then run the same command with --resume",
+                kind=OUT_OF_CREDIT,
             )
         if attempt >= self.attempts:
             raise RateLimitStop(

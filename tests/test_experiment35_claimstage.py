@@ -271,3 +271,15 @@ def test_the_real_path_refuses_a_pending_classifier_seed_and_names_it(
     ctx = _real_ctx(tmp_path, plan)
     with pytest.raises(arms.ArmConfigError, match=r"seeds\.classifier.*P10"):
         claimstage35._classifier(ctx)
+
+
+def test_each_kind_row_saves_the_call_tokens_and_cost(tmp_path) -> None:
+    async def classifier(messages):
+        reply = _reply()
+        reply.input_tokens, reply.output_tokens, reply.cost_usd = 120, 3, 0.0002
+        return reply
+
+    ctx = _ctx(tmp_path, classifier)
+    assert _run(ctx) == 0
+    row = _rows(ctx)[0]
+    assert (row["input_tokens"], row["output_tokens"], row["cost_usd"]) == (120, 3, 0.0002)

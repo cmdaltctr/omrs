@@ -80,6 +80,7 @@ import cli35  # noqa: E402
 import closedbook35  # noqa: E402
 import datasets35  # noqa: E402
 import determinism35  # noqa: E402
+import hostedusage35  # noqa: E402
 import judges35  # noqa: E402
 import lengthcheck35  # noqa: E402
 import oracle35  # noqa: E402
@@ -187,6 +188,7 @@ def main(argv: Sequence[str] | None = None, *, deps: Any = None) -> int:
         return EXIT_JUDGE
     except RateLimitStop as stop:
         say(f"[stop] {stop}; finished rows are kept, no done-marker. Run again with --resume.")
+        hostedusage35.record_stop(args, stop)
         return EXIT_RATE_LIMIT
     except stages35.StageIncomplete as open_items:
         say(f"[open] {open_items}")
