@@ -489,3 +489,11 @@ def test_confirmatory_result_applies_the_gate_rows(tmp_path) -> None:
         "financebench": [12, 13],
         "freshstack": [12, 13, 14],
     }
+
+
+def test_a_term_with_no_saved_setup_enters_no_question() -> None:
+    # Only one answer setup saved: row 12's other cell has no setup, so no question enters.
+    one = "e4b-c1024-r0.6b-hon"
+    cells = {one: {"q0": 0.5, "q1": 0.7}}
+    d, excluded = factorial35.contrast(factorial35.ROWS[11], cells)
+    assert d == {} and excluded == 2

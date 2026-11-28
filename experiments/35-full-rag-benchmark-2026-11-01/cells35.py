@@ -105,7 +105,12 @@ def contrast(
     every = set().union(*(cells[s] for s in setups)) if setups else set()
     if questions is not None:
         every = set(questions)
-    entered = [q for q in sorted(every) if all(q in cells[s] for s in used)]
+    # A term with no saved setup has no cell, so no question enters (no division by zero).
+    entered = (
+        [q for q in sorted(every) if all(q in cells[s] for s in used)]
+        if all(match for _, match in terms)
+        else []
+    )
     d = {
         q: math.fsum(c * math.fsum(cells[s][q] for s in m) / len(m) for c, m in terms)
         for q in entered
