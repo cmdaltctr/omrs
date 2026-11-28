@@ -567,7 +567,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +13 (2026-11-27, task 16.20 and PR 239 review, by test-ID diff against v3 987a21be):
 # 9 in test_experiment35_hosted_usage, 2 in test_experiment35_run_arms, 1 in
 # test_experiment35_claimstage and 1 in test_experiment35_parallel_answers.
-_BASE_EXECUTED = 14511
+# +1 (2026-11-28, freeze-check finding, by test-ID diff): 1 in test_experiment35_factorial.
+_BASE_EXECUTED = 14512
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
