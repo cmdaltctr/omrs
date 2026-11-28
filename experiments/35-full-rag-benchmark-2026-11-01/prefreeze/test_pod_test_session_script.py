@@ -444,6 +444,8 @@ def test_a_timed_out_stage_leaves_a_python_stack_in_the_log(tmp_path: Path) -> N
 
 def test_a_timed_out_foreground_python_stage_leaves_its_stack_in_the_log(tmp_path: Path) -> None:
     # A plain stage that ends at SIGTERM prints nothing, so the first signal must be SIGABRT.
-    result, _ = _run(tmp_path, 'slow@1s python3 -c "import time; time.sleep(40)"\n')
+    # 3 s, not 1 s: on a loaded CI runner Python may not have started within 1 s, and a
+    # signal before start-up prints no stack (failed once on ubuntu-latest, PR 240).
+    result, _ = _run(tmp_path, 'slow@3s python3 -c "import time; time.sleep(40)"\n')
     assert result.returncode == 1
     assert "most recent call first" in result.stdout + result.stderr
